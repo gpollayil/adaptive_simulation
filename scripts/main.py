@@ -8,6 +8,7 @@ robot models and objects.
 import sys
 import os
 import importlib
+import time
 
 # Checking for good Klampt version
 import pkg_resources
@@ -74,10 +75,31 @@ def launch_grasping(robot_name, object_set, object_name):
         sim.body(world.rigidObject(l)).setCollisionPreshrink(visPreShrink)
 
     # Creating Hand emulator from the robot name
-    module = importlib.import_module('plugins.' + robot_name, )
+    module = importlib.import_module('plugins.' + robot_name, 'IROS2016ManipulationChallenge')
     # emulator takes the robot index (0), start link index (6), and start driver index (6)
     hand = module.HandEmulator(sim, 0, 6, 6)
     sim.addEmulator(0, hand)
+
+    # The result of adaptive_controller.make() is now attached to control the robot
+    import adaptive_controller
+    sim.setController(robot, adaptive_controller.make(sim, hand, program.dt))
+
+    # Latches the current configuration in the PID controller
+    sim.controller(0).setPIDCommand(robot.getConfig(), robot.getVelocity())
+
+    # this code manually updates the visualization
+    vis.add("world", world)
+    vis.show()
+    t0 = time.time()
+    while vis.shown():
+        vis.lock()
+        sim.simulate(0.01)
+        sim.updateWorld()
+        vis.unlock()
+        t1 = time.time()
+        time.sleep(max(0.01 - (t1 - t0), 0.001))
+        t0 = t1
+    return
 
 
 """ 
