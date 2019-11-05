@@ -26,12 +26,12 @@ import make_elements as mk_el
 import move_elements as mv_el
 
 # Some global constants
-path_prefix = '../IROS2016ManipulationChallenge/'
+path_prefix = '../../IROS2016ManipulationChallenge/'
 objects = {}
 objects['apc2015'] = [f for f in os.listdir(path_prefix + 'data/objects/apc2015')]
 
 # Some global params
-robot_name = "reflex_col"                               # robot model
+robot_name = "soft_hand"                               # robot model
 terrain_file = path_prefix + "data/terrains/plane.env"                # terrain
 
 """
@@ -58,9 +58,22 @@ def launch_grasping(robot_name, object_set, object_name):
     object = mk_el.make_object(object_set, object_name, world)
 
     # NOT CLEAR WHAT THIS DOES... TODO: CHECK WHILE TESTING!!!
-    xform = resource.get("%s/default_initial_%s.xform" % (object_set, robot_name, object_name),
-                         description="Initial hand transform",
+    doedit = True
+    xform = resource.get("%s/default_initial_%s.xform" % (object_set, robot_name), description="Initial hand transform",
                          default=robot.link(5).getTransform(), world=world)
+    mv_el.set_moving_base_xform(robot, xform[0], xform[1])
+    xform = resource.get("%s/initial_%s_%s.xform" % (object_set, robot_name, object_name),
+                         description="Initial hand transform", default=robot.link(5).getTransform(), world=world,
+                         doedit=False)
+    if xform:
+        mv_el.set_moving_base_xform(robot, xform[0], xform[1])
+    xform = resource.get("%s/initial_%s_%s.xform" % (object_set, robot_name, object_name),
+                         description="Initial hand transform", default=robot.link(5).getTransform(), world=world,
+                         doedit=doedit)
+    if not xform:
+        print "User quit the program"
+        return
+    # this sets the initial condition for the simulation
     mv_el.set_moving_base_xform(robot, xform[0], xform[1])
 
     # Launch the simulation
@@ -75,7 +88,8 @@ def launch_grasping(robot_name, object_set, object_name):
         sim.body(world.rigidObject(l)).setCollisionPreshrink(visPreShrink)
 
     # Creating Hand emulator from the robot name
-    module = importlib.import_module('plugins.' + robot_name, 'IROS2016ManipulationChallenge')
+    sys.path.append('../../IROS2016ManipulationChallenge')
+    module = importlib.import_module('plugins.' + robot_name)
     # emulator takes the robot index (0), start link index (6), and start driver index (6)
     hand = module.HandEmulator(sim, 0, 6, 6)
     sim.addEmulator(0, hand)

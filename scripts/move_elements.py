@@ -5,6 +5,11 @@ These functions move the object and the robot in the Klampt world
 
 from klampt.math import so3
 
+def get_moving_base_xform(robot):
+    """For a moving base robot model, returns the current base rotation
+    matrix R and translation t."""
+    return robot.link(5).getTransform()
+
 def set_moving_base_xform(robot,R,t):
     """For a moving base robot model, set the current base rotation
     matrix R and translation t.  (Note: if you are controlling a robot
