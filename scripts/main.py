@@ -25,8 +25,11 @@ from klampt.sim import *
 import make_elements as mk_el
 import move_elements as mv_el
 
+# Absolute path of the current file folder
+file_path = os.path.abspath(os.path.dirname(__file__))
+
 # Some global constants
-path_prefix = '../../IROS2016ManipulationChallenge/'
+path_prefix = file_path + '/../../IROS2016ManipulationChallenge/'
 objects = {}
 objects['apc2015'] = [f for f in os.listdir(path_prefix + 'data/objects/apc2015')]
 

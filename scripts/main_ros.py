@@ -1,14 +1,20 @@
+#! /usr/bin/env python
+
 """
 This script creates the Klampt simulation for testing the adaptive_grasping.
 ATTENTION! The package IROS2016ManipulationChallenge package is needed in order to use its
 robot models and objects.
 """
 
-# Generic imports
+# Generic Imports
 import sys
 import os
 import importlib
 import time
+
+# ROS Imports
+import roslib; roslib.load_manifest('adaptive_simulation')
+import rospy
 
 # Checking for good Klampt version
 import pkg_resources
@@ -25,8 +31,12 @@ from klampt.sim import *
 import make_elements as mk_el
 import move_elements as mv_el
 
+# Absolute path of the current file folder
+file_path = os.path.abspath(os.path.dirname(__file__))
+
 # Some global constants
-path_prefix = '../../IROS2016ManipulationChallenge/'
+path_prefix = file_path + '/../../IROS2016ManipulationChallenge/'
+print path_prefix
 objects = {}
 objects['apc2015'] = [f for f in os.listdir(path_prefix + 'data/objects/apc2015')]
 
@@ -127,10 +137,10 @@ Main
 """
 
 def main():
-    print "Adaptive Grasping Simulation."
 
-    # This file needs to be called in the following format
-    # format: python main.py <data_set> <object>
+    # Initializing ROS Node
+    print "Creating ROS Node."
+    rospy.init_node('main_ros_node')
 
     # Checking for data_set
     try:
@@ -156,6 +166,16 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
 
+    print "Adaptive Grasping Simulation ROS Node."
 
+    # This file needs to be called in the following format
+    # format: rosrun main_ros.py <data_set> <object>
+
+    if len(sys.argv) < 3:
+        print "Usage: : rosrun main_ros.py <data_set> <object>"
+    else:
+        try:
+            main()
+        except rospy.ROSInterruptException:
+            pass
