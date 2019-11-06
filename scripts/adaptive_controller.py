@@ -2,13 +2,11 @@
 This auxiliary file contains the adaptive controller used in main.py.
 """
 
-# import sys
-# sys.path.append('../../IROS2016ManipulationChallenge')
-
 from klampt.math import se3, so3
 import move_elements as mv_el
-import plugins.reflex, plugins.soft_hand
-import plugins.actuators.CompliantHandEmulator
+
+import plugins.reflex, plugins.soft_hand        # TODO: Does this work? Specify this to be imported from other package
+import plugins.actuators.CompliantHandEmulator  # TODO: Does this work? Specify this to be imported from other package
 
 def make(sim,hand,dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
