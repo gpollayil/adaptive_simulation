@@ -2,8 +2,8 @@
 This auxiliary file contains the adaptive controller used in main.py.
 """
 
-import sys
-sys.path.append('../../IROS2016ManipulationChallenge')
+# import sys
+# sys.path.append('../../IROS2016ManipulationChallenge')
 
 from klampt.math import se3, so3
 import move_elements as mv_el
@@ -56,7 +56,7 @@ def make(sim,hand,dt):
 
         if sim.getTime() < 0.05:
             if is_soft_hand:
-                hand.setCommand([0.8])
+                hand.setCommand([0.85])
             else:
                 #the controller sends a command to the hand: f1,f2,f3,preshape
                 hand.setCommand([0.2,0.2,0.2,0])

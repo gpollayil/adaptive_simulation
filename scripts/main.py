@@ -31,7 +31,7 @@ objects = {}
 objects['apc2015'] = [f for f in os.listdir(path_prefix + 'data/objects/apc2015')]
 
 # Some global params
-robot_name = "soft_hand"                               # robot model
+robot_name = "reflex_col"                               # robot model
 terrain_file = path_prefix + "data/terrains/plane.env"                # terrain
 
 """

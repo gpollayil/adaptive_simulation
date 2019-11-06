@@ -46,4 +46,4 @@ viscousFriction 50 50 50 50 50 50
 dryFriction 1 1 1 1 1 1
 
 property sensors <sensors><ForceTorqueSensor link="5" hasForce="1 1 1" hasTorque="1 1 1" /></sensors>
-mount 5 "../../IROS2016ManipulationChallenge/data/robots/soft_hand.urdf" 1 0 0   0 1 0   0 0 1   0 0 0 as "soft_hand"
+mount 5 "../../IROS2016ManipulationChallenge/data/robots/reflex_col.rob" 1 0 0   0 1 0   0 0 1   0 0 0 as "reflex_col"
