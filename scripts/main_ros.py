@@ -15,6 +15,7 @@ import time
 # ROS Imports
 import roslib; roslib.load_manifest('adaptive_simulation')
 import rospy
+from sensor_msgs.msg import JointState
 
 # Checking for good Klampt version
 import pkg_resources
@@ -31,18 +32,19 @@ from klampt.sim import *
 import make_elements as mk_el
 import move_elements as mv_el
 
+DEBUG = True
+
 # Absolute path of the current file folder
 file_path = os.path.abspath(os.path.dirname(__file__))
 
 # Some global constants
 path_prefix = file_path + '/../../IROS2016ManipulationChallenge/'
 print path_prefix
-objects = {}
-objects['apc2015'] = [f for f in os.listdir(path_prefix + 'data/objects/apc2015')]
+objects = {'apc2015': [f for f in os.listdir(path_prefix + 'data/objects/apc2015')]}
 
 # Some global params
-robot_name = "reflex_col"                               # robot model
-terrain_file = path_prefix + "data/terrains/plane.env"                # terrain
+robot_name = "soft_hand"                                                # robot model
+terrain_file = path_prefix + "data/terrains/plane.env"                  # terrain
 
 """
 Functions
@@ -66,10 +68,10 @@ def launch_grasping(robot_name, object_set, object_name):
 
     # Making the robot and the object (from make_elements.py)
     robot = mk_el.make_robot(robot_name, world)
-    object = mk_el.make_object(object_set, object_name, world)
+    mk_el.make_object(object_set, object_name, world)
 
     # NOT CLEAR WHAT THIS DOES... TODO: CHECK WHILE TESTING!!!
-    doedit = True
+    do_edit = True
     xform = resource.get("%s/default_initial_%s.xform" % (object_set, robot_name), description="Initial hand transform",
                          default=robot.link(5).getTransform(), world=world)
     mv_el.set_moving_base_xform(robot, xform[0], xform[1])
@@ -80,7 +82,7 @@ def launch_grasping(robot_name, object_set, object_name):
         mv_el.set_moving_base_xform(robot, xform[0], xform[1])
     xform = resource.get("%s/initial_%s_%s.xform" % (object_set, robot_name, object_name),
                          description="Initial hand transform", default=robot.link(5).getTransform(), world=world,
-                         doedit=doedit)
+                         doedit=do_edit)
     if not xform:
         print "User quit the program"
         return
@@ -122,13 +124,25 @@ def update_simulation(world, sim):
     vis.show()
     t0 = time.time()
     while vis.shown():
+
+        # Sumulating and updating visualization
         vis.lock()
         sim.simulate(0.01)
         sim.updateWorld()
         vis.unlock()
+
+        # Publishing joint states
+        present_robot = world.robot(world.numRobots() - 1)
+        joint_states = present_robot.getConfig()
+
+        if DEBUG:
+            print "The present robot config is " + str(joint_states)
+
+        # Sleeping a little bit
         t1 = time.time()
         time.sleep(max(0.01 - (t1 - t0), 0.001))
         t0 = t1
+
     return
 
 
@@ -139,7 +153,6 @@ Main
 def main():
 
     # Initializing ROS Node
-    print "Creating ROS Node."
     rospy.init_node('main_ros_node')
 
     # Checking for data_set
@@ -159,6 +172,10 @@ def main():
     except ValueError:
         obj_name = sys.argv[2]
 
+    # Creating a publisher for joint states
+    global joints_pub
+    joints_pub = rospy.Publisher("/klampt_joint_states", JointState, queue_size=10)
+
     # Launching the grasp simulation and when it finishes killing visualization
     launch_grasping(robot_name, data_set, obj_name)
 
@@ -170,10 +187,10 @@ if __name__ == '__main__':
     print "Adaptive Grasping Simulation ROS Node."
 
     # This file needs to be called in the following format
-    # format: rosrun main_ros.py <data_set> <object>
+    # format: rosrun adaptive_simulation main_ros.py <data_set> <object>
 
     if len(sys.argv) < 3:
-        print "Usage: : rosrun main_ros.py <data_set> <object>"
+        print "Usage: : rosrun adaptive_simulation main_ros.py <data_set> <object>"
     else:
         try:
             main()
