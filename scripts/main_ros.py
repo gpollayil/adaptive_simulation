@@ -17,6 +17,9 @@ import roslib; roslib.load_manifest('adaptive_simulation')
 import rospy
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
+import tf
+import tf2_ros
+import geometry_msgs.msg
 
 # Checking for good Klampt version
 import pkg_resources
@@ -28,6 +31,7 @@ from klampt import vis
 from klampt.io import resource
 from klampt.vis.glrobotprogram import *
 from klampt.sim import *
+from klampt.math import so3
 
 # Auxiliary functions file
 import make_elements as mk_el
@@ -50,6 +54,9 @@ terrain_file = path_prefix + "data/terrains/plane.env"                  # terrai
 # ROS Params
 joints_pub_topic_name = '/soft_hand_klampt/joint_states'
 syn_joint_name = 'soft_hand_synergy_joint'
+world_frame_name = 'world'
+klampt_floating_link_name = 'soft_hand_clamp'
+floating_frame_name = 'soft_hand_kuka_coupler_bottom'
 
 """
 Functions
@@ -132,6 +139,11 @@ def update_simulation(world, sim):
     syn_joint.effort = []
     syn_joint.velocity = []
 
+    # Creating a TransformStamped
+    static_transformStamped = geometry_msgs.msg.TransformStamped()
+    static_transformStamped.header.frame_id = world_frame_name
+    static_transformStamped.child_frame_id = floating_frame_name
+
     vis.add("world", world)
     vis.show()
     t0 = time.time()
@@ -152,14 +164,35 @@ def update_simulation(world, sim):
         #     print "The number of joints is " + str(num_joints)
 
         joint_states = present_robot.getConfig()
-        if DEBUG:
-            print "The present synergy joint is " + str(joint_states[34])
+        # if DEBUG:
+        #     print "The present synergy joint is " + str(joint_states[34])
 
         # Setting the synergy joint and publishing
         syn_joint.header = Header()
         syn_joint.header.stamp = rospy.Time.now()
         syn_joint.position = [joint_states[34]]
         joints_pub.publish(syn_joint)
+
+        # Getting the transform from world to floating frame
+        floating_link = present_robot.link(2)
+        link_name = floating_link.getName();
+        (R,t) = floating_link.getTransform()
+        quat = so3.quaternion(R)
+
+        if DEBUG:
+            print 'The floating link is ' + str(link_name) + ' and the quaternion is ' + str(quat) + ' and the translation is ' + str(t)
+
+        # Setting the transform message and broadcasting
+        static_transformStamped.header.stamp = rospy.Time.now()
+        static_transformStamped.transform.translation.x = t[0]
+        static_transformStamped.transform.translation.y = t[1]
+        static_transformStamped.transform.translation.z = t[2]
+        static_transformStamped.transform.rotation.x = quat[1]
+        static_transformStamped.transform.rotation.y = quat[2]
+        static_transformStamped.transform.rotation.z = quat[3]
+        static_transformStamped.transform.rotation.w = quat[0]
+
+        broadcaster.sendTransform(static_transformStamped)
 
         # Sleeping a little bit
         t1 = time.time()
@@ -181,6 +214,10 @@ def main():
     # Publisher of the synergy joint for ROS
     global joints_pub
     joints_pub = rospy.Publisher(joints_pub_topic_name, JointState, queue_size=10)
+
+    # TF broadcaster for floating frame
+    global broadcaster
+    broadcaster = tf2_ros.StaticTransformBroadcaster()
 
     # Checking for data_set
     try:
