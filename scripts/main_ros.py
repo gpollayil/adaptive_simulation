@@ -16,6 +16,7 @@ import time
 import roslib; roslib.load_manifest('adaptive_simulation')
 import rospy
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Header
 
 # Checking for good Klampt version
 import pkg_resources
@@ -45,6 +46,10 @@ objects = {'apc2015': [f for f in os.listdir(path_prefix + 'data/objects/apc2015
 # Some global params
 robot_name = "soft_hand"                                                # robot model
 terrain_file = path_prefix + "data/terrains/plane.env"                  # terrain
+
+# ROS Params
+joints_pub_topic_name = '/soft_hand_klampt/joint_states'
+syn_joint_name = 'soft_hand_synergy_joint'
 
 """
 Functions
@@ -120,9 +125,17 @@ def launch_grasping(robot_name, object_set, object_name):
 
 def update_simulation(world, sim):
     # this code manually updates the visualization
+
+    # Creating the JointState msg to be published
+    syn_joint = JointState()
+    syn_joint.name = [syn_joint_name]
+    syn_joint.effort = []
+    syn_joint.velocity = []
+
     vis.add("world", world)
     vis.show()
     t0 = time.time()
+
     while vis.shown():
 
         # Sumulating and updating visualization
@@ -133,10 +146,20 @@ def update_simulation(world, sim):
 
         # Publishing joint states
         present_robot = world.robot(world.numRobots() - 1)
-        joint_states = present_robot.getConfig()
 
+        # num_joints = present_robot.numDrivers();
+        # if DEBUG:
+        #     print "The number of joints is " + str(num_joints)
+
+        joint_states = present_robot.getConfig()
         if DEBUG:
-            print "The present robot config is " + str(joint_states)
+            print "The present synergy joint is " + str(joint_states[34])
+
+        # Setting the synergy joint and publishing
+        syn_joint.header = Header()
+        syn_joint.header.stamp = rospy.Time.now()
+        syn_joint.position = [joint_states[34]]
+        joints_pub.publish(syn_joint)
 
         # Sleeping a little bit
         t1 = time.time()
@@ -155,6 +178,10 @@ def main():
     # Initializing ROS Node
     rospy.init_node('main_ros_node')
 
+    # Publisher of the synergy joint for ROS
+    global joints_pub
+    joints_pub = rospy.Publisher(joints_pub_topic_name, JointState, queue_size=10)
+
     # Checking for data_set
     try:
         data_set = sys.argv[1]
@@ -171,10 +198,6 @@ def main():
         return
     except ValueError:
         obj_name = sys.argv[2]
-
-    # Creating a publisher for joint states
-    global joints_pub
-    joints_pub = rospy.Publisher("/klampt_joint_states", JointState, queue_size=10)
 
     # Launching the grasp simulation and when it finishes killing visualization
     launch_grasping(robot_name, data_set, obj_name)
