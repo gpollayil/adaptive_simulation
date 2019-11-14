@@ -9,9 +9,11 @@ import time
 import roslib
 roslib.load_manifest('adaptive_simulation')
 import rospy
+import tf2_ros
+# ROS msg Imports
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
-import tf2_ros
+from std_msgs.msg import Int8
 import geometry_msgs.msg
 
 # Checking for good Klampt version
@@ -50,10 +52,25 @@ robot_name = "soft_hand"                                                # robot 
 terrain_file = path_prefix + "data/terrains/plane.env"                  # terrain
 
 # ROS Params
+# For joint state and floating frame publishing
 joints_pub_topic_name = '/soft_hand_klampt/joint_states'
 syn_joint_name = 'soft_hand_synergy_joint'
 world_frame_name = 'world'
 floating_frame_name = 'soft_hand_kuka_coupler_bottom'
+# For contact publishing
+touch_pub_topic_name = '/touching_finger_topic'
+finger_links_id_dict = \
+    {39: 'soft_hand_thumb_distal_link',
+     12: 'soft_hand_index_distal_link',
+     26: 'soft_hand_middle_distal_link',
+     33: 'soft_hand_ring_distal_link',
+     19: 'soft_hand_little_distal_link'}                              # Looked this up as klampt simulation starts
+touch_id_dict = \
+    {'soft_hand_thumb_distal_link': 1,
+     'soft_hand_index_distal_link': 2,
+     'soft_hand_middle_distal_link': 3,
+     'soft_hand_ring_distal_link': 4,
+     'soft_hand_little_distal_link': 5}                               # Convention in adaptive_params.yaml
 
 """
 Functions
@@ -130,7 +147,8 @@ def launch_grasping(passed_robot_name, object_set, object_name):
 
 
 def update_simulation(world, sim):
-    # this code manually updates the visualization
+    # This code manually updates the visualization while doing other stuff for ROS: publishing joint_states, floating
+    # frame's tf, publishing touch data
 
     # Creating the JointState msg to be published
     syn_joint = JointState()
@@ -143,13 +161,16 @@ def update_simulation(world, sim):
     static_transform_stamped.header.frame_id = world_frame_name
     static_transform_stamped.child_frame_id = floating_frame_name
 
+    # Creating the Int8 msg for touch publishing
+    touch_msg = Int8()
+
     vis.add("world", world)
     vis.show()
     t0 = time.time()
 
     while vis.shown():
 
-        # Sumulating and updating visualization
+        # Simulating and updating visualization
         vis.lock()
         sim.simulate(0.01)
         sim.updateWorld()
@@ -195,6 +216,8 @@ def update_simulation(world, sim):
 
         broadcaster.sendTransform(static_transform_stamped)
 
+        # TODO: here add auxiliary funtion for getting the new touch id and publish it
+
         # Sleeping a little bit
         t1 = time.time()
         time.sleep(max(0.01 - (t1 - t0), 0.001))
@@ -213,9 +236,13 @@ def main():
     # Initializing ROS Node
     rospy.init_node('main_ros_node')
 
-    # Publisher of the synergy joint for ROS
+    # Publisher of the synergy joint
     global joints_pub
     joints_pub = rospy.Publisher(joints_pub_topic_name, JointState, queue_size=10)
+
+    # Publisher for touch data
+    global touch_pub
+    touch_pub = rospy.Publisher(touch_pub_topic_name, Int8, queue_size=10)
 
     # TF broadcaster for floating frame
     global broadcaster
@@ -225,7 +252,7 @@ def main():
     try:
         data_set = sys.argv[1]
     except IndexError:
-        print "Oops! Please indicate a data set and try again!"
+        print "Oops! Please specify a data set and try again!"
         return
 
     # Checking for object
@@ -233,7 +260,7 @@ def main():
         index = int(sys.argv[2])
         obj_name = objects[data_set][index]
     except IndexError:
-        print "Oops! Specified object seems not to be there. Please indicate an object of the data set and try again!"
+        print "Oops! Specified object seems not to be there. Please specify an object of the data set and try again!"
         return
     except ValueError:
         obj_name = sys.argv[2]
