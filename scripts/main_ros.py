@@ -26,6 +26,7 @@ from klampt.io import resource
 from klampt.vis.glrobotprogram import *
 from klampt.sim import *
 from klampt.math import so3
+from klampt.model import contact
 
 # Auxiliary functions file
 import make_elements as mk_el
@@ -142,6 +143,9 @@ def launch_grasping(passed_robot_name, object_set, object_name):
     # Latches the current configuration in the PID controller
     sim.controller(0).setPIDCommand(robot.getConfig(), robot.getVelocity())
 
+    # Enabling contact feedback
+    sim.enableContactFeedbackAll()
+
     # Updating simulation and visualization
     return update_simulation(world, sim)
 
@@ -209,14 +213,16 @@ def update_simulation(world, sim):
         static_transform_stamped.transform.rotation.z = quat[3]
         static_transform_stamped.transform.rotation.w = quat[0]
 
-        if DEBUG:
-            print 'The floating link is {0} and the quaternion is {1} and the translation is {2}'.format(str(link_name),
-                                                                                                         str(quat),
-                                                                                                         str(t))
+        # if DEBUG:
+        #     print 'The floating link is {0} and the quaternion is {1} and the translation is {2}'.format(str(link_name),
+        #                                                                                                  str(quat),
+        #                                                                                                  str(t))
 
         broadcaster.sendTransform(static_transform_stamped)
 
-        # TODO: here add auxiliary funtion for getting the new touch id and publish it
+        # TODO: here add auxiliary function for getting the new touch id and publish it
+        check_contacts(world, sim)
+
 
         # Sleeping a little bit
         t1 = time.time()
@@ -224,6 +230,21 @@ def update_simulation(world, sim):
         t0 = t1
 
     return
+
+
+def check_contacts(world, sim):
+    # Checks for contacts and returns an ids of touching fingers
+    contacted=False
+    for i in range(world.numIDs()):
+        for j in range(i+1,world.numIDs()):
+            # Looping over everything. TODO: Changed this and loop over only needed links
+            if sim.inContact(i,j):
+                if not contacted:
+                    print "Touching bodies:",i,j
+                    contacted=True
+                f = sim.contactForce(i,j)
+                t = sim.contactTorque(i,j)
+                print " ",world.getName(i),"-",world.getName(j),"contact force",f,"and torque",t
 
 
 """ 
