@@ -73,7 +73,7 @@ def make(sim, hand, dt):
                 # the controller sends a command to the hand: f1,f2,f3,preshape
                 hand.setCommand([0.2, 0.2, 0.2, 0])
 
-        t_lift = 1
+        t_lift = 1.5
         lift_traj_duration = 0.5
         if sim.getTime() > t_lift:
             # the controller sends a command to the base after 1 s to lift the object
