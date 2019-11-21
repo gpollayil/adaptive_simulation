@@ -11,7 +11,7 @@ import move_elements as mv_el
 
 DEBUG = False
 
-def make(sim, hand, dt):
+def make(sim, hand, dt, ref_vec):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
     processing is needed when it is invoked."""
 

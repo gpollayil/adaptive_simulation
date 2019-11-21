@@ -15,6 +15,7 @@ from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
 from std_msgs.msg import Int8
 import geometry_msgs.msg
+from std_msgs.msg import Float64
 
 # Checking for good Klampt version
 import pkg_resources
@@ -54,6 +55,8 @@ terrain_file = path_prefix + "data/terrains/plane.env"                  # terrai
 
 # ROS Params
 # For joint state and floating frame publishing
+hand_topic = '/right_hand/velocity_controller/command'
+arm_topic = '/panda_arm/cartesian_velocity_controller/command'
 joints_pub_topic_name = '/soft_hand_klampt/joint_states'
 syn_joint_name = 'soft_hand_synergy_joint'
 world_frame_name = 'world'
@@ -156,7 +159,8 @@ def launch_grasping(passed_robot_name, object_set, object_name):
 
     # The result of adaptive_controller.make() is now attached to control the robot
     import adaptive_controller
-    sim.setController(robot, adaptive_controller.make(sim, hand, program.dt))
+    ref_vec = []
+    sim.setController(robot, adaptive_controller.make(sim, hand, program.dt, ref_vec))
 
     # Latches the current configuration in the PID controller
     sim.controller(0).setPIDCommand(robot.getConfig(), robot.getVelocity())
@@ -278,6 +282,19 @@ def check_contacts(world, sim):
 
 
 """ 
+Callbacks 
+"""
+
+def arm_callback(data):
+    if (DEBUG): rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+    hand_command = data.data
+
+def hand_callback(data):
+    if (DEBUG): rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+    arm_command = data.data
+
+
+""" 
 Main 
 """
 
@@ -294,6 +311,12 @@ def main():
     # Publisher for touch data
     global touch_pub
     touch_pub = rospy.Publisher(touch_pub_topic_name, Int8, queue_size=10)
+
+    # Subscribers to command topics and their variables
+    rospy.Subscriber(arm_topic, geometry_msgs.msg.Twist, arm_callback)
+    rospy.Subscriber(hand_topic, Float64, hand_callback)
+    global hand_command
+    global arm_command
 
     # TF broadcaster for floating frame
     global broadcaster
