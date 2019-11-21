@@ -73,6 +73,24 @@ touch_id_dict = \
      'soft_hand_ring_distal_link': 4,
      'soft_hand_little_distal_link': 5}                               # Convention in adaptive_params.yaml
 
+joints_dict = {
+    6 : 'soft_hand_index_abd_joint', 7 : 'soft_hand_index_inner_joint_mimic', 8 : 'soft_hand_index_inner_joint',
+    9 : 'soft_hand_index_middle_joint_mimic', 10 : 'soft_hand_index_middle_joint', 11 : 'soft_hand_index_outer_joint_mimic',
+    12 : 'soft_hand_index_outer_joint',
+    13 : 'soft_hand_little_abd_joint', 14 : 'soft_hand_little_inner_joint_mimic', 15 : 'soft_hand_little_inner_joint',
+    16 : 'soft_hand_little_middle_joint_mimic', 17 : 'soft_hand_little_middle_joint', 18 : 'soft_hand_little_outer_joint_mimic',
+    19 : 'soft_hand_little_outer_joint',
+    20 : 'soft_hand_middle_abd_joint', 21 : 'soft_hand_middle_inner_joint_mimic', 22 : 'soft_hand_middle_inner_joint',
+    23 : 'soft_hand_middle_middle_joint_mimic', 24 : 'soft_hand_middle_middle_joint', 25 : 'soft_hand_middle_outer_joint_mimic',
+    26 : 'soft_hand_middle_outer_joint',
+    27 : 'soft_hand_ring_abd_joint', 28 : 'soft_hand_ring_inner_joint_mimic', 29 : 'soft_hand_ring_inner_joint',
+    30 : 'soft_hand_ring_middle_joint_mimic', 31 : 'soft_hand_ring_middle_joint', 32 : 'soft_hand_ring_outer_joint_mimic',
+    33 : 'soft_hand_ring_outer_joint',
+    34 : 'soft_hand_synergy_joint',
+    35 : 'soft_hand_thumb_abd_joint', 36 : 'soft_hand_thumb_inner_joint_mimic', 37 : 'soft_hand_thumb_inner_joint',
+    38 : 'soft_hand_thumb_outer_joint_mimic', 39 : 'soft_hand_thumb_outer_joint'
+}
+
 """
 Functions
 """
@@ -154,9 +172,14 @@ def update_simulation(world, sim):
     # This code manually updates the visualization while doing other stuff for ROS: publishing joint_states, floating
     # frame's tf, publishing touch data
 
+    # Creating the joints name array
+    joint_names_array = []
+    for i in joints_dict:
+        joint_names_array.append(joints_dict[i])
+
     # Creating the JointState msg to be published
     syn_joint = JointState()
-    syn_joint.name = [syn_joint_name]
+    syn_joint.name = joint_names_array
     syn_joint.effort = []
     syn_joint.velocity = []
 
@@ -191,10 +214,17 @@ def update_simulation(world, sim):
         # if DEBUG:
         #     print "The present synergy joint is " + str(joint_states[34])
 
+        # print "The present joints are " + str(joint_states)
+
+        # Creating the joint values array
+        joint_values_array = []
+        for i in joints_dict:
+            joint_values_array.append(joint_states[i])
+
         # Setting the synergy joint and publishing
         syn_joint.header = Header()
         syn_joint.header.stamp = rospy.Time.now()
-        syn_joint.position = [joint_states[34]]
+        syn_joint.position = joint_values_array
         joints_pub.publish(syn_joint)
 
         # Getting the transform from world to floating frame
