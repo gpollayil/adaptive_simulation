@@ -5,13 +5,55 @@ This auxiliary file contains the adaptive controller used in main.py.
 import plugins.actuators.CompliantHandEmulator  # TODO: Does this work? Specify this to be imported from other package
 import plugins.reflex  # TODO: Does this work? Specify this to be imported from other package
 import plugins.soft_hand  # TODO: Does this work? Specify this to be imported from other package
-from klampt.math import se3, so3
+from klampt.math import se3, so3, vectorops
+from geometry_msgs.msg import Pose
+from tf import transformations
 
 import global_vars
-
 import move_elements as mv_el
 
 DEBUG = False
+
+
+def integrate_velocities(controller, sim, dt, xform):
+    """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
+    processing is needed when it is invoked."""
+
+    syn_curr = controller.getSensedConfig()
+    palm_curr = mv_el.get_moving_base_xform(sim.controller(0).model())
+    R = palm_curr[0]
+    t = palm_curr[1]
+    quat = so3.quaternion(R)    # wxyz
+
+    # Converting quat to rpy
+    euler = transformations.euler_from_quaternion((quat[1], quat[2], quat[3], quat[0]))     # this needs xyzw
+
+    # Checking if list empty and returning false
+    if not syn_curr:
+        return (False, None, None)
+    else:
+        syn_curr = syn_curr[34]
+
+    if DEBUG:
+        print 'The present position of the hand encoder is ', syn_curr
+        print 'The present position of the palm is ', t, 'and its orientation is', euler
+
+    # Getting linear and angular velocities
+    lin_vel_vec = global_vars.arm_command.linear
+    ang_vel_vec = global_vars.arm_command.angular
+    lin_vel = [lin_vel_vec.x, lin_vel_vec.y, lin_vel_vec.z]
+    ang_vel = [ang_vel_vec.x, ang_vel_vec.y, ang_vel_vec.z]
+
+    # Integrating
+    syn_next = syn_curr + global_vars.hand_command * dt
+    t_next = vectorops.madd(t, lin_vel, dt)
+    euler_next = vectorops.madd(euler, ang_vel, dt)
+
+    # Convert back for send xform
+    palm_next = se3.mul((so3.from_rpy(euler_next), t_next), xform)
+
+    return (True, syn_next, palm_next)
+
 
 def make(sim, hand, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
@@ -68,16 +110,19 @@ def make(sim, hand, dt):
             except:
                 pass
 
+        # Integrating the velocities
+        (success, syn_comm, palm_comm) = integrate_velocities(controller, sim, dt, xform)
+
         if sim.getTime() < 0.05:
             if is_soft_hand:
-                hand.setCommand([1.00])
+                if success:
+                    print 'The commanded position of the hand encoder is ', syn_comm
+                    print 'The commanded position of the palm is ', palm_comm
+                    hand.setCommand([syn_comm])
+                    mv_el.send_moving_base_xform_PID(controller, palm_comm[0], palm_comm[1])
             else:
                 # the controller sends a command to the hand: f1,f2,f3, pre-shape
                 hand.setCommand([0.2, 0.2, 0.2, 0])
-
-
-        print 'The arm_command var is', global_vars.arm_command
-        print 'The hand_command var is', global_vars.hand_command
 
         t_lift = 1.5
         lift_traj_duration = 0.5

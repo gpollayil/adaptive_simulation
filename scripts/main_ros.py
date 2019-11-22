@@ -42,7 +42,7 @@ ATTENTION! The package IROS2016ManipulationChallenge package is needed in order 
 robot models and objects.
 """
 
-DEBUG = True
+DEBUG = False
 
 # Absolute path of the current file folder
 file_path = os.path.abspath(os.path.dirname(__file__))
