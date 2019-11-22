@@ -1,12 +1,13 @@
 #! /usr/bin/env python
 
+import importlib
 # Generic Imports
 import os
-import importlib
 import time
 
 # ROS Imports
 import roslib
+
 roslib.load_manifest('adaptive_simulation')
 import rospy
 import tf2_ros
@@ -27,11 +28,13 @@ from klampt.io import resource
 from klampt.vis.glrobotprogram import *
 from klampt.sim import *
 from klampt.math import so3
-from klampt.model import contact
 
 # Auxiliary functions file
 import make_elements as mk_el
 import move_elements as mv_el
+
+# Importing global variables
+import global_vars
 
 """
 This script creates the Klampt simulation for testing the adaptive_grasping.
@@ -77,21 +80,24 @@ touch_id_dict = \
      'soft_hand_little_distal_link': 5}                               # Convention in adaptive_params.yaml
 
 joints_dict = {
-    6 : 'soft_hand_index_abd_joint', 7 : 'soft_hand_index_inner_joint_mimic', 8 : 'soft_hand_index_inner_joint',
-    9 : 'soft_hand_index_middle_joint_mimic', 10 : 'soft_hand_index_middle_joint', 11 : 'soft_hand_index_outer_joint_mimic',
-    12 : 'soft_hand_index_outer_joint',
-    13 : 'soft_hand_little_abd_joint', 14 : 'soft_hand_little_inner_joint_mimic', 15 : 'soft_hand_little_inner_joint',
-    16 : 'soft_hand_little_middle_joint_mimic', 17 : 'soft_hand_little_middle_joint', 18 : 'soft_hand_little_outer_joint_mimic',
-    19 : 'soft_hand_little_outer_joint',
-    20 : 'soft_hand_middle_abd_joint', 21 : 'soft_hand_middle_inner_joint_mimic', 22 : 'soft_hand_middle_inner_joint',
-    23 : 'soft_hand_middle_middle_joint_mimic', 24 : 'soft_hand_middle_middle_joint', 25 : 'soft_hand_middle_outer_joint_mimic',
-    26 : 'soft_hand_middle_outer_joint',
-    27 : 'soft_hand_ring_abd_joint', 28 : 'soft_hand_ring_inner_joint_mimic', 29 : 'soft_hand_ring_inner_joint',
-    30 : 'soft_hand_ring_middle_joint_mimic', 31 : 'soft_hand_ring_middle_joint', 32 : 'soft_hand_ring_outer_joint_mimic',
-    33 : 'soft_hand_ring_outer_joint',
-    34 : 'soft_hand_synergy_joint',
-    35 : 'soft_hand_thumb_abd_joint', 36 : 'soft_hand_thumb_inner_joint_mimic', 37 : 'soft_hand_thumb_inner_joint',
-    38 : 'soft_hand_thumb_outer_joint_mimic', 39 : 'soft_hand_thumb_outer_joint'
+    6: 'soft_hand_index_abd_joint', 7: 'soft_hand_index_inner_joint_mimic', 8: 'soft_hand_index_inner_joint',
+    9: 'soft_hand_index_middle_joint_mimic', 10: 'soft_hand_index_middle_joint',
+    11: 'soft_hand_index_outer_joint_mimic',
+    12: 'soft_hand_index_outer_joint',
+    13: 'soft_hand_little_abd_joint', 14: 'soft_hand_little_inner_joint_mimic', 15: 'soft_hand_little_inner_joint',
+    16: 'soft_hand_little_middle_joint_mimic', 17: 'soft_hand_little_middle_joint',
+    18: 'soft_hand_little_outer_joint_mimic',
+    19: 'soft_hand_little_outer_joint',
+    20: 'soft_hand_middle_abd_joint', 21: 'soft_hand_middle_inner_joint_mimic', 22: 'soft_hand_middle_inner_joint',
+    23: 'soft_hand_middle_middle_joint_mimic', 24: 'soft_hand_middle_middle_joint',
+    25: 'soft_hand_middle_outer_joint_mimic',
+    26: 'soft_hand_middle_outer_joint',
+    27: 'soft_hand_ring_abd_joint', 28: 'soft_hand_ring_inner_joint_mimic', 29: 'soft_hand_ring_inner_joint',
+    30: 'soft_hand_ring_middle_joint_mimic', 31: 'soft_hand_ring_middle_joint', 32: 'soft_hand_ring_outer_joint_mimic',
+    33: 'soft_hand_ring_outer_joint',
+    34: 'soft_hand_synergy_joint',
+    35: 'soft_hand_thumb_abd_joint', 36: 'soft_hand_thumb_inner_joint_mimic', 37: 'soft_hand_thumb_inner_joint',
+    38: 'soft_hand_thumb_outer_joint_mimic', 39: 'soft_hand_thumb_outer_joint'
 }
 
 """
@@ -159,8 +165,7 @@ def launch_grasping(passed_robot_name, object_set, object_name):
 
     # The result of adaptive_controller.make() is now attached to control the robot
     import adaptive_controller
-    ref_vec = []
-    sim.setController(robot, adaptive_controller.make(sim, hand, program.dt, ref_vec))
+    sim.setController(robot, adaptive_controller.make(sim, hand, program.dt))
 
     # Latches the current configuration in the PID controller
     sim.controller(0).setPIDCommand(robot.getConfig(), robot.getVelocity())
@@ -229,11 +234,10 @@ def update_simulation(world, sim):
         syn_joint.header = Header()
         syn_joint.header.stamp = rospy.Time.now()
         syn_joint.position = joint_values_array
-        joints_pub.publish(syn_joint)
+        global_vars.joints_pub.publish(syn_joint)
 
         # Getting the transform from world to floating frame
         floating_link = present_robot.link(4)       # This id comes from trial and error (should be kuka coupler bottom)
-        link_name = floating_link.getName()
         (R, t) = floating_link.getTransform()
         quat = so3.quaternion(R)
 
@@ -247,16 +251,10 @@ def update_simulation(world, sim):
         static_transform_stamped.transform.rotation.z = quat[3]
         static_transform_stamped.transform.rotation.w = quat[0]
 
-        # if DEBUG:
-        #     print 'The floating link is {0} and the quaternion is {1} and the translation is {2}'.format(str(link_name),
-        #                                                                                                  str(quat),
-        #                                                                                                  str(t))
-
         broadcaster.sendTransform(static_transform_stamped)
 
         # TODO: here add auxiliary function for getting the new touch id and publish it
         check_contacts(world, sim)
-
 
         # Sleeping a little bit
         t1 = time.time()
@@ -268,30 +266,34 @@ def update_simulation(world, sim):
 
 def check_contacts(world, sim):
     # Checks for contacts and returns an ids of touching fingers
-    contacted=False
+    contacted = False
     for i in range(world.numIDs()):
-        for j in range(i+1,world.numIDs()):
+        for j in range(i+1, world.numIDs()):
             # Looping over everything. TODO: Changed this and loop over only needed links
-            if sim.inContact(i,j):
+            if sim.inContact(i, j):
                 if not contacted:
-                    print "Touching bodies:",i,j
-                    contacted=True
-                f = sim.contactForce(i,j)
-                t = sim.contactTorque(i,j)
-                print " ",world.getName(i),"-",world.getName(j),"contact force",f,"and torque",t
+                    print "Touching bodies:", i, j
+                    contacted = True
+                cont_f = sim.contactForce(i, j)
+                cont_t = sim.contactTorque(i, j)
+                print " ", world.getName(i), "-", world.getName(j), "contact force", cont_f, "and torque", cont_t
 
 
 """ 
 Callbacks 
 """
 
+
 def arm_callback(data):
-    if (DEBUG): rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
-    hand_command = data.data
+    if DEBUG:
+        rospy.loginfo(rospy.get_caller_id() + " I heard %s", data)
+    global_vars.arm_command = data
+
 
 def hand_callback(data):
-    if (DEBUG): rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
-    arm_command = data.data
+    if DEBUG:
+        rospy.loginfo(rospy.get_caller_id() + " I heard %s", data.data)
+    global_vars.hand_command = data.data
 
 
 """ 
@@ -305,18 +307,14 @@ def main():
     rospy.init_node('main_ros_node')
 
     # Publisher of the synergy joint
-    global joints_pub
-    joints_pub = rospy.Publisher(joints_pub_topic_name, JointState, queue_size=10)
+    global_vars.joints_pub = rospy.Publisher(joints_pub_topic_name, JointState, queue_size=10)
 
     # Publisher for touch data
-    global touch_pub
     touch_pub = rospy.Publisher(touch_pub_topic_name, Int8, queue_size=10)
 
     # Subscribers to command topics and their variables
     rospy.Subscriber(arm_topic, geometry_msgs.msg.Twist, arm_callback)
     rospy.Subscriber(hand_topic, Float64, hand_callback)
-    global hand_command
-    global arm_command
 
     # TF broadcaster for floating frame
     global broadcaster

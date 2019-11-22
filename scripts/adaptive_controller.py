@@ -7,11 +7,13 @@ import plugins.reflex  # TODO: Does this work? Specify this to be imported from 
 import plugins.soft_hand  # TODO: Does this work? Specify this to be imported from other package
 from klampt.math import se3, so3
 
+import global_vars
+
 import move_elements as mv_el
 
 DEBUG = False
 
-def make(sim, hand, dt, ref_vec):
+def make(sim, hand, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
     processing is needed when it is invoked."""
 
@@ -70,8 +72,12 @@ def make(sim, hand, dt, ref_vec):
             if is_soft_hand:
                 hand.setCommand([1.00])
             else:
-                # the controller sends a command to the hand: f1,f2,f3,preshape
+                # the controller sends a command to the hand: f1,f2,f3, pre-shape
                 hand.setCommand([0.2, 0.2, 0.2, 0])
+
+
+        print 'The arm_command var is', global_vars.arm_command
+        print 'The hand_command var is', global_vars.hand_command
 
         t_lift = 1.5
         lift_traj_duration = 0.5
