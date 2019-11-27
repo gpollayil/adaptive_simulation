@@ -25,6 +25,10 @@ def integrate_velocities(controller, sim, dt, xform):
     t = palm_curr[1]
     quat = so3.quaternion(R)    # wxyz
 
+    print 'The current palm rotation is ', R
+    print 'The current palm translation is ', t
+    print 'The simulation dt is ', dt
+
     # Converting quat to rpy
     euler = transformations.euler_from_quaternion((quat[1], quat[2], quat[3], quat[0]))     # this needs xyzw
 
@@ -34,8 +38,9 @@ def integrate_velocities(controller, sim, dt, xform):
     else:
         syn_curr = syn_curr[34]
 
-    if DEBUG:
+    if DEBUG or True:
         print 'The present position of the hand encoder is ', syn_curr
+        print 'The adaptive velocity of hand is ', global_vars.hand_command
         print 'The present position of the palm is ', t, 'and its orientation is', euler
 
     # Getting linear and angular velocities
@@ -113,18 +118,22 @@ def make(sim, hand, dt):
         # Integrating the velocities
         (success, syn_comm, palm_comm) = integrate_velocities(controller, sim, dt, xform)
 
-        if sim.getTime() < 0.05:
+        # print 'The integration of velocity -> success = ', success
+
+        print 'Current time is ', sim.getTime()
+
+        t_lift = 1.5
+        if sim.getTime() < t_lift:
             if is_soft_hand:
                 if success:
                     print 'The commanded position of the hand encoder is ', syn_comm
                     print 'The commanded position of the palm is ', palm_comm
-                    hand.setCommand([syn_comm])
-                    mv_el.send_moving_base_xform_PID(controller, palm_comm[0], palm_comm[1])
+                    hand.setCommand([1.0])
+                    mv_el.send_moving_base_xform_linear(controller, palm_comm[0], palm_comm[1], dt)
             else:
                 # the controller sends a command to the hand: f1,f2,f3, pre-shape
                 hand.setCommand([0.2, 0.2, 0.2, 0])
 
-        t_lift = 1.5
         lift_traj_duration = 0.5
         if sim.getTime() > t_lift:
             # the controller sends a command to the base after 1 s to lift the object
