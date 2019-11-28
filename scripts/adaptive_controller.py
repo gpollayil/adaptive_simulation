@@ -60,7 +60,7 @@ def integrate_velocities(controller, sim, dt, xform):
     # Convert back for send xform
     palm_next = se3.mul((so3.from_rpy(euler_next), t_next), xform)
 
-    return (True, syn_next, palm_next)
+    return (True, syn_next, palm_curr)
 
 
 def make(sim, hand, dt):
