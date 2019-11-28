@@ -197,14 +197,15 @@ def update_simulation(world, sim):
     static_transform_stamped.header.frame_id = world_frame_name
     static_transform_stamped.child_frame_id = floating_frame_name
 
-    # Creating the Int8 msg for touch publishing
+    # Creating the Int8 msg for touch publishing and the touch memory
     touch_msg = Int8()
+    touch_memory = []
 
     vis.add("world", world)
     vis.show()
     t0 = time.time()
 
-    sim_time = 0.025
+    sim_time = 0.02
 
     while vis.shown():
 
@@ -253,10 +254,10 @@ def update_simulation(world, sim):
         static_transform_stamped.transform.rotation.z = quat[3]
         static_transform_stamped.transform.rotation.w = quat[0]
 
-        broadcaster.sendTransform(static_transform_stamped)
+        global_vars.broadcaster.sendTransform(static_transform_stamped)
 
         # TODO: here add auxiliary function for getting the new touch id and publish it
-        check_contacts(world, sim)
+        check_contacts(world, sim, touch_memory, touch_msg)
 
         # Sleeping a little bit
         t1 = time.time()
@@ -266,19 +267,44 @@ def update_simulation(world, sim):
     return
 
 
-def check_contacts(world, sim):
+def check_contacts(world, sim, touch_memory, touch_msg):
     # Checks for contacts and returns an ids of touching fingers
-    contacted = False
+    touches_now = []
     for i in range(world.numIDs()):
         for j in range(i+1, world.numIDs()):
-            # Looping over everything. TODO: Changed this and loop over only needed links
+            # Looping over everything and checking if the distal links are present
+            # TODO: Do this for all links (Mods will be needed also in contact state where the finger_FK is called)
             if sim.inContact(i, j):
-                if not contacted:
-                    print "Touching bodies:", i, j
-                    contacted = True
                 cont_f = sim.contactForce(i, j)
                 cont_t = sim.contactTorque(i, j)
-                print " ", world.getName(i), "-", world.getName(j), "contact force", cont_f, "and torque", cont_t
+                first_link = world.getName(i)
+                second_link = world.getName(j)
+
+                if DEBUG:
+                    print " ", first_link, "-", second_link, "contact force", cont_f, "and torque", cont_t
+
+                # Checking if in touch id dict and saving to touches now
+                for k in touch_id_dict:
+                    if (k in first_link or k in second_link):
+                        if DEBUG:
+                            print 'FOUND IN TOUCH_DICT!!!!'
+                        touches_now.append(touch_id_dict.get(k))
+
+    # The first id in touches now which is not in touch memory will be published
+    if DEBUG:
+        print 'The touch_memory is ', touch_memory
+        print 'The touches_now are ', touches_now
+
+    id_for_pub = 0
+    for k in touches_now:
+        if k not in touch_memory:
+            id_for_pub = k
+            touch_memory.append(id_for_pub)
+            break
+    if id_for_pub is not 0:
+        touch_msg.data = id_for_pub
+        global_vars.touch_pub.publish(touch_msg)
+
 
 
 """ 
@@ -312,15 +338,14 @@ def main():
     global_vars.joints_pub = rospy.Publisher(joints_pub_topic_name, JointState, queue_size=10)
 
     # Publisher for touch data
-    touch_pub = rospy.Publisher(touch_pub_topic_name, Int8, queue_size=10)
+    global_vars.touch_pub = rospy.Publisher(touch_pub_topic_name, Int8, queue_size=10)
 
     # Subscribers to command topics and their variables
     rospy.Subscriber(arm_topic, geometry_msgs.msg.Twist, arm_callback)
     rospy.Subscriber(hand_topic, Float64, hand_callback)
 
     # TF broadcaster for floating frame
-    global broadcaster
-    broadcaster = tf2_ros.StaticTransformBroadcaster()
+    global_vars.broadcaster = tf2_ros.StaticTransformBroadcaster()
 
     # Checking for data_set
     try:

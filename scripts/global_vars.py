@@ -12,3 +12,6 @@ arm_command = Twist()
 # For publishing the joint states and the touch data
 global joints_pub
 global touch_pub
+
+# For broadcasting the palm frame
+global broadcaster

@@ -14,6 +14,8 @@ import move_elements as mv_el
 
 DEBUG = False
 
+int_const = 1000
+
 
 def integrate_velocities(controller, sim, dt, xform):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
@@ -25,9 +27,10 @@ def integrate_velocities(controller, sim, dt, xform):
     t = palm_curr[1]
     quat = so3.quaternion(R)    # wxyz
 
-    print 'The current palm rotation is ', R
-    print 'The current palm translation is ', t
-    print 'The simulation dt is ', dt
+    if DEBUG or True:
+        print 'The current palm rotation is ', R
+        print 'The current palm translation is ', t
+        print 'The simulation dt is ', dt
 
     # Converting quat to rpy
     euler = transformations.euler_from_quaternion((quat[1], quat[2], quat[3], quat[0]))     # this needs xyzw
@@ -50,9 +53,9 @@ def integrate_velocities(controller, sim, dt, xform):
     ang_vel = [ang_vel_vec.x, ang_vel_vec.y, ang_vel_vec.z]
 
     # Integrating
-    syn_next = syn_curr + global_vars.hand_command * dt
-    t_next = vectorops.madd(t, lin_vel, dt)
-    euler_next = vectorops.madd(euler, ang_vel, dt)
+    syn_next = syn_curr + global_vars.hand_command * int_const * dt
+    t_next = vectorops.madd(t, lin_vel, int_const * dt)
+    euler_next = vectorops.madd(euler, ang_vel, int_const * dt)
 
     # Convert back for send xform
     palm_next = se3.mul((so3.from_rpy(euler_next), t_next), xform)
@@ -126,10 +129,11 @@ def make(sim, hand, dt):
         if sim.getTime() < t_lift:
             if is_soft_hand:
                 if success:
-                    print 'The commanded position of the hand encoder is ', syn_comm
-                    print 'The commanded position of the palm is ', palm_comm
-                    hand.setCommand([1.0])
-                    mv_el.send_moving_base_xform_linear(controller, palm_comm[0], palm_comm[1], dt)
+                    if DEBUG or True:
+                        print 'The commanded position of the hand encoder is ', syn_comm
+                        print 'The commanded position of the palm is ', palm_comm
+                    hand.setCommand([syn_comm])
+                    mv_el.send_moving_base_xform_PID(controller, palm_comm[0], palm_comm[1])
             else:
                 # the controller sends a command to the hand: f1,f2,f3, pre-shape
                 hand.setCommand([0.2, 0.2, 0.2, 0])
