@@ -204,11 +204,13 @@ def update_simulation(world, sim):
     vis.show()
     t0 = time.time()
 
+    sim_time = 0.025
+
     while vis.shown():
 
         # Simulating and updating visualization
         vis.lock()
-        sim.simulate(0.01)
+        sim.simulate(sim_time)
         sim.updateWorld()
         vis.unlock()
 
