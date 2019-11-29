@@ -14,7 +14,9 @@ import move_elements as mv_el
 
 DEBUG = False
 
-int_const = 1000
+int_const_syn = 1000
+int_const_t = 10
+int_const_eul = 10
 
 
 def integrate_velocities(controller, sim, dt, xform):
@@ -26,7 +28,7 @@ def integrate_velocities(controller, sim, dt, xform):
     R = palm_curr[0]
     t = palm_curr[1]
 
-    if DEBUG or True:
+    if DEBUG:
         print 'The current palm rotation is ', R
         print 'The current palm translation is ', t
         print 'The simulation dt is ', dt
@@ -42,9 +44,10 @@ def integrate_velocities(controller, sim, dt, xform):
         syn_curr = syn_curr[34]
 
     if DEBUG or True:
-        print 'The present position of the hand encoder is ', syn_curr
-        print 'The adaptive velocity of hand is ', global_vars.hand_command
-        print 'The present position of the palm is ', t, 'and its orientation is', euler
+        # print 'The present position of the hand encoder is ', syn_curr
+        # print 'The adaptive velocity of hand is ', global_vars.hand_command
+        print 'The adaptive twist of palm is ', global_vars.arm_command
+        #print 'The present position of the palm is ', t, 'and its orientation is', euler
 
     # Getting linear and angular velocities
     lin_vel_vec = global_vars.arm_command.linear
@@ -53,9 +56,9 @@ def integrate_velocities(controller, sim, dt, xform):
     ang_vel = [ang_vel_vec.x, ang_vel_vec.y, ang_vel_vec.z]
 
     # Integrating
-    syn_next = syn_curr + global_vars.hand_command * int_const * dt
-    t_next = vectorops.madd(t, lin_vel, int_const * dt)
-    euler_next = vectorops.madd(euler, ang_vel, int_const * dt)
+    syn_next = syn_curr + global_vars.hand_command * int_const_syn * dt
+    t_next = vectorops.madd(t, lin_vel, int_const_t * dt)
+    euler_next = vectorops.madd(euler, ang_vel, int_const_eul * dt)
 
     print 'euler_next is ', euler_next
 
@@ -127,9 +130,7 @@ def make(sim, hand, dt):
 
         # print 'The integration of velocity -> success = ', success
 
-        print 'Current time is ', sim.getTime()
-
-        t_lift = 1.5
+        t_lift = 3.5
         if sim.getTime() < t_lift:
             if is_soft_hand:
                 if success:
