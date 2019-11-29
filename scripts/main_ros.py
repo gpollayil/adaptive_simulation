@@ -205,7 +205,7 @@ def update_simulation(world, sim):
     vis.show()
     t0 = time.time()
 
-    sim_time = 0.02
+    sim_time = 0.01
 
     while vis.shown():
 
