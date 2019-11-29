@@ -6,6 +6,9 @@ import plugins.actuators.CompliantHandEmulator  # TODO: Does this work? Specify 
 import plugins.reflex  # TODO: Does this work? Specify this to be imported from other package
 import plugins.soft_hand  # TODO: Does this work? Specify this to be imported from other package
 from klampt.math import se3, so3, vectorops
+import math as sym
+import numpy as np
+
 from geometry_msgs.msg import Pose
 from tf import transformations
 
@@ -33,9 +36,8 @@ def integrate_velocities(controller, sim, dt, xform):
         print 'The current palm translation is ', t
         print 'The simulation dt is ', dt
 
-    # Converting quat to rpy
+    # Converting to rpy
     euler = so3.rpy(R)
-    print 'euler is ', euler
 
     # Checking if list empty and returning false
     if not syn_curr:
@@ -55,11 +57,15 @@ def integrate_velocities(controller, sim, dt, xform):
     lin_vel = [lin_vel_vec.x, lin_vel_vec.y, lin_vel_vec.z]
     ang_vel = [ang_vel_vec.x, ang_vel_vec.y, ang_vel_vec.z]
 
+    # Transform ang vel into rpy vel
+    euler_vel = transform_ang_vel([0, 0, 0], ang_vel)
+
     # Integrating
     syn_next = syn_curr + global_vars.hand_command * int_const_syn * dt
     t_next = vectorops.madd(t, lin_vel, int_const_t * dt)
     euler_next = vectorops.madd(euler, ang_vel, int_const_eul * dt)
 
+    print 'euler is ', euler
     print 'euler_next is ', euler_next
 
     # Convert back for send xform
@@ -67,8 +73,23 @@ def integrate_velocities(controller, sim, dt, xform):
     palm_t_next = t_next
     palm_next = [palm_R_next, palm_t_next]
 
-    return (True, syn_next, palm_next)
+    return (True, syn_next, palm_curr)
 
+def transform_ang_vel(euler, ang_vel):
+    """ Transforms an omega (ang. vel.) into rpy parametrization """
+
+    r = euler[0]
+    p = euler[1]
+    y = euler[2]
+
+    # Transformation matrix (ref. https://davidbrown3.github.io/2017-07-25/EulerAngles/)
+    T = np.array([[sym.cos(y)/sym.cos(p), -sym.sin(y)/sym.cos(p), 0],
+                  [sym.sin(y), sym.cos(y), 0],
+                  [-(sym.cos(y)*sym.sin(p))/sym.cos(p), (sym.sin(p)*sym.sin(y))/sym.cos(p), 1]])
+
+    vec = np.array([[ang_vel[0]], [ang_vel[1]], [ang_vel[2]]])
+
+    return np.matmul(T, vec)
 
 def make(sim, hand, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
@@ -136,7 +157,7 @@ def make(sim, hand, dt):
                 if success:
                     if DEBUG or True:
                         print 'The commanded position of the hand encoder is ', syn_comm
-                        print 'The commanded position of the palm is ', palm_comm
+                        print 'The commanded pose of the palm is ', palm_comm
                     hand.setCommand([syn_comm])
                     mv_el.send_moving_base_xform_PID(controller, palm_comm[0], palm_comm[1])
             else:
