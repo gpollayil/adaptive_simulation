@@ -25,7 +25,6 @@ def integrate_velocities(controller, sim, dt, xform):
     palm_curr = mv_el.get_moving_base_xform(sim.controller(0).model())
     R = palm_curr[0]
     t = palm_curr[1]
-    quat = so3.quaternion(R)    # wxyz
 
     if DEBUG or True:
         print 'The current palm rotation is ', R
@@ -33,7 +32,8 @@ def integrate_velocities(controller, sim, dt, xform):
         print 'The simulation dt is ', dt
 
     # Converting quat to rpy
-    euler = transformations.euler_from_quaternion((quat[1], quat[2], quat[3], quat[0]))     # this needs xyzw
+    euler = so3.rpy(R)
+    print 'euler is ', euler
 
     # Checking if list empty and returning false
     if not syn_curr:
@@ -57,10 +57,14 @@ def integrate_velocities(controller, sim, dt, xform):
     t_next = vectorops.madd(t, lin_vel, int_const * dt)
     euler_next = vectorops.madd(euler, ang_vel, int_const * dt)
 
-    # Convert back for send xform
-    palm_next = se3.mul((so3.from_rpy(euler_next), t_next), xform)
+    print 'euler_next is ', euler_next
 
-    return (True, syn_next, palm_curr)
+    # Convert back for send xform
+    palm_R_next = so3.from_rpy(euler_next)
+    palm_t_next = t_next
+    palm_next = [palm_R_next, palm_t_next]
+
+    return (True, syn_next, palm_next)
 
 
 def make(sim, hand, dt):
