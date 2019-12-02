@@ -86,19 +86,26 @@ def integrate_velocities(controller, sim, dt, xform):
     return (True, syn_next, palm_next)
 
 def transform_ang_vel(euler, ang_vel):
-    """ Transforms an omega (ang. vel.) into rpy parametrization """
+    """ Transforms an omega (ang. vel.) into rpy or ypr parametrization """
 
     r = euler[0]
     p = euler[1]
     y = euler[2]
 
     # Transformation matrix (ref. https://davidbrown3.github.io/2017-07-25/EulerAngles/)
-    T = np.array([[sym.cos(y)/sym.cos(p), -sym.sin(y)/sym.cos(p), 0],
+    # YRP
+    Tyrp = np.array([[1, sym.tan(p)*sym.sin(r), sym.cos(r)*sym.tan(p)],
+                  [0, sym.cos(r), -sym.sin(r)],
+                  [0, sym.sin(r)/sym.cos(p), sym.cos(r)/sym.cos(p)]])
+
+    # RPY
+    Trpy = np.array([[sym.cos(y)/sym.cos(p), -sym.sin(y)/sym.cos(p), 0],
                   [sym.sin(y), sym.cos(y), 0],
                   [-(sym.cos(y)*sym.sin(p))/sym.cos(p), (sym.sin(p)*sym.sin(y))/sym.cos(p), 1]])
 
+
     vec = np.array([ang_vel[0], ang_vel[1], ang_vel[2]])
-    vec_transformed = np.matmul(T, vec)
+    vec_transformed = np.matmul(Trpy, vec)
     vec_tup = totuple(vec_transformed) # conversion to tuple for xform
 
     return vec_tup
