@@ -17,9 +17,9 @@ import move_elements as mv_el
 
 DEBUG = False
 
-int_const_syn = 1000
-int_const_t = 10
-int_const_eul = 10
+int_const_syn = 100
+int_const_t = 1
+int_const_eul = 1
 
 
 def integrate_velocities(controller, sim, dt, xform):
@@ -63,17 +63,27 @@ def integrate_velocities(controller, sim, dt, xform):
     # Integrating
     syn_next = syn_curr + global_vars.hand_command * int_const_syn * dt
     t_next = vectorops.madd(t, lin_vel, int_const_t * dt)
-    euler_next = vectorops.madd(euler, ang_vel, int_const_eul * dt)
+    euler_next = vectorops.madd(euler, euler_vel, int_const_eul * dt)
 
-    print 'euler is ', euler
-    print 'euler_next is ', euler_next
+    print 'euler is ', euler, ' and is of type ', type(euler)
+    print 'euler_vel is ', euler_vel, ' and is of type ', type(euler_vel)
+    print 'euler_next is ', euler_next, ' and is of type ', type(euler_next)
 
     # Convert back for send xform
     palm_R_next = so3.from_rpy(euler_next)
     palm_t_next = t_next
-    palm_next = [palm_R_next, palm_t_next]
+    palm_next = (palm_R_next, palm_t_next)
 
-    return (True, syn_next, palm_curr)
+    print 't is ', t, ' and is of type ', type(t)
+    print 't_next is ', t_next, ' and is of type ', type(t_next)
+
+    print 'R is ', R, ' and is of type ', type(R)
+    print 'palm_R_next is ', palm_R_next, ' and is of type ', type(palm_R_next)
+
+    print 'palm_curr is ', palm_curr, ' and is of type ', type(palm_curr)
+    print 'palm_next is ', palm_next, ' and is of type ', type(palm_next)
+
+    return (True, syn_next, palm_next)
 
 def transform_ang_vel(euler, ang_vel):
     """ Transforms an omega (ang. vel.) into rpy parametrization """
@@ -87,9 +97,17 @@ def transform_ang_vel(euler, ang_vel):
                   [sym.sin(y), sym.cos(y), 0],
                   [-(sym.cos(y)*sym.sin(p))/sym.cos(p), (sym.sin(p)*sym.sin(y))/sym.cos(p), 1]])
 
-    vec = np.array([[ang_vel[0]], [ang_vel[1]], [ang_vel[2]]])
+    vec = np.array([ang_vel[0], ang_vel[1], ang_vel[2]])
+    vec_transformed = np.matmul(T, vec)
+    vec_tup = totuple(vec_transformed) # conversion to tuple for xform
 
-    return np.matmul(T, vec)
+    return vec_tup
+
+def totuple(a):
+    try:
+        return tuple(totuple(i) for i in a)
+    except TypeError:
+        return a
 
 def make(sim, hand, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
@@ -151,11 +169,11 @@ def make(sim, hand, dt):
 
         # print 'The integration of velocity -> success = ', success
 
-        t_lift = 3.5
+        t_lift = 3.0
         if sim.getTime() < t_lift:
             if is_soft_hand:
                 if success:
-                    if DEBUG or True:
+                    if DEBUG:
                         print 'The commanded position of the hand encoder is ', syn_comm
                         print 'The commanded pose of the palm is ', palm_comm
                     hand.setCommand([syn_comm])

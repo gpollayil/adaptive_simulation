@@ -240,7 +240,7 @@ def update_simulation(world, sim):
         global_vars.joints_pub.publish(syn_joint)
 
         # Getting the transform from world to floating frame
-        floating_link = present_robot.link(4)       # This id comes from trial and error (should be kuka coupler bottom)
+        floating_link = present_robot.link(5)       # This id comes from trial and error (should be kuka coupler bottom)
         (R, t) = floating_link.getTransform()
         quat = so3.quaternion(R)
 
