@@ -16,6 +16,7 @@ from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
 from std_msgs.msg import Int8
 import geometry_msgs.msg
+from geometry_msgs.msg import Pose, Twist
 from std_msgs.msg import Float64
 
 # Checking for good Klampt version
@@ -32,6 +33,9 @@ from klampt.math import so3
 # Auxiliary functions file
 import make_elements as mk_el
 import move_elements as mv_el
+
+# Custom Adaptive Grasping imports for calling the run adaptive grasper
+from adaptive_grasping.srv import adaptiveGrasp, adaptiveGraspRequest
 
 # Importing global variables
 import global_vars
@@ -64,6 +68,15 @@ joints_pub_topic_name = '/soft_hand_klampt/joint_states'
 syn_joint_name = 'soft_hand_synergy_joint'
 world_frame_name = 'world'
 floating_frame_name = 'soft_hand_kuka_coupler_bottom'
+
+# For object pose and twist publishing
+obj_pose_pub_topic_name = '/object_pose'
+obj_twist_pub_topic_name = '/object_twist'
+object_frame_name = 'object'
+
+# For Adaptive Grasping service
+adaptive_grasping_service_name = '/adaptive_task_service'
+
 # For contact publishing
 touch_pub_topic_name = '/touching_finger_topic'
 finger_links_id_dict = \
@@ -195,7 +208,6 @@ def update_simulation(world, sim):
     # Creating a TransformStamped
     static_transform_stamped = geometry_msgs.msg.TransformStamped()
     static_transform_stamped.header.frame_id = world_frame_name
-    static_transform_stamped.child_frame_id = floating_frame_name
 
     # Creating the Int8 msg for touch publishing and the touch memory
     touch_msg = Int8()
@@ -244,8 +256,9 @@ def update_simulation(world, sim):
         (R, t) = floating_link.getTransform()
         quat = so3.quaternion(R)
 
-        # Setting the transform message and broadcasting
+        # Setting the transform message and broadcasting palm frame
         static_transform_stamped.header.stamp = rospy.Time.now()
+        static_transform_stamped.child_frame_id = floating_frame_name
         static_transform_stamped.transform.translation.x = t[0]
         static_transform_stamped.transform.translation.y = t[1]
         static_transform_stamped.transform.translation.z = t[2]
@@ -254,7 +267,44 @@ def update_simulation(world, sim):
         static_transform_stamped.transform.rotation.z = quat[3]
         static_transform_stamped.transform.rotation.w = quat[0]
 
-        global_vars.broadcaster.sendTransform(static_transform_stamped)
+        global_vars.palm_broadcaster.sendTransform(static_transform_stamped)
+
+        # Getting the transform from world to object and object velocity
+        obj = world.rigidObject(world.numRigidObjects() - 1)
+        (R_obj, t_obj) = obj.getTransform()
+        (w_obj, v_obj) = obj.getVelocity()
+        quat_obj = so3.quaternion(R_obj)
+
+        # Setting the transform message and broadcasting object frame
+        static_transform_stamped.header.stamp = rospy.Time.now()
+        static_transform_stamped.child_frame_id = object_frame_name
+        static_transform_stamped.transform.translation.x = t_obj[0]
+        static_transform_stamped.transform.translation.y = t_obj[1]
+        static_transform_stamped.transform.translation.z = t_obj[2]
+        static_transform_stamped.transform.rotation.x = quat_obj[1]
+        static_transform_stamped.transform.rotation.y = quat_obj[2]
+        static_transform_stamped.transform.rotation.z = quat_obj[3]
+        static_transform_stamped.transform.rotation.w = quat_obj[0]
+
+        global_vars.obj_broadcaster.sendTransform(static_transform_stamped)
+
+        # Publishing the object pose and twist
+        obj_pose = Pose()
+        obj_pose.position.x = static_transform_stamped.transform.translation.x
+        obj_pose.position.y = static_transform_stamped.transform.translation.y
+        obj_pose.position.z = static_transform_stamped.transform.translation.z
+        obj_pose.orientation.x = static_transform_stamped.transform.rotation.x
+        obj_pose.orientation.y = static_transform_stamped.transform.rotation.y
+        obj_pose.orientation.z = static_transform_stamped.transform.rotation.z
+        global_vars.obj_pose_pub.publish(obj_pose)
+        obj_twist = Twist()
+        obj_twist.angular.x = w_obj[0]
+        obj_twist.angular.y = w_obj[1]
+        obj_twist.angular.z = w_obj[2]
+        obj_twist.linear.x = v_obj[0]
+        obj_twist.linear.y = v_obj[1]
+        obj_twist.linear.z = v_obj[2]
+        global_vars.obj_twist_pub.publish(obj_twist)
 
         # TODO: here add auxiliary function for getting the new touch id and publish it
         check_contacts(world, sim, touch_memory, touch_msg)
@@ -334,18 +384,22 @@ def main():
     # Initializing ROS Node
     rospy.init_node('main_ros_node')
 
-    # Publisher of the synergy joint
+    # Publishers for synergy joint, touch data and object pose and twist
     global_vars.joints_pub = rospy.Publisher(joints_pub_topic_name, JointState, queue_size=10)
-
-    # Publisher for touch data
     global_vars.touch_pub = rospy.Publisher(touch_pub_topic_name, Int8, queue_size=10)
+    global_vars.obj_pose_pub = rospy.Publisher(obj_pose_pub_topic_name, Pose, queue_size=10)
+    global_vars.obj_twist_pub = rospy.Publisher(obj_twist_pub_topic_name, Twist, queue_size=10)
+
+    # Publisher for run adaptive grasper
+    global_vars.adaptive_service_client = rospy.ServiceProxy(adaptive_grasping_service_name, adaptiveGrasp) # TODO FROM HERE TOMORROW!!!!!
 
     # Subscribers to command topics and their variables
-    rospy.Subscriber(arm_topic, geometry_msgs.msg.Twist, arm_callback)
+    rospy.Subscriber(arm_topic, Twist, arm_callback)
     rospy.Subscriber(hand_topic, Float64, hand_callback)
 
-    # TF broadcaster for floating frame
-    global_vars.broadcaster = tf2_ros.StaticTransformBroadcaster()
+    # TF broadcaster for floating frame and for object frame
+    global_vars.palm_broadcaster = tf2_ros.StaticTransformBroadcaster()
+    global_vars.obj_broadcaster = tf2_ros.StaticTransformBroadcaster()
 
     # Checking for data_set
     try:
