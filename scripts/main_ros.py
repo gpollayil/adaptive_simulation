@@ -389,9 +389,16 @@ def check_contacts(world, sim, touch_memory, touch_msg):
             id_for_pub = k
             touch_memory.append(id_for_pub)
             break
-    if id_for_pub is not 0:
+
+    print 'touch_memory is ', touch_memory
+
+    if touch_memory:
+        touch_msg.data = touch_memory[-1]
+    else:
         touch_msg.data = id_for_pub
-        global_vars.touch_pub.publish(touch_msg)
+
+    # Publishing
+    global_vars.touch_pub.publish(touch_msg)
 
 
 """ 
