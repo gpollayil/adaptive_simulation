@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+
+<!--
+
+The needed nodes and params for launching the adaptive simulation
+
+Usage:
+roslaunch adaptive_simulation adaptive_simulation.launch my_args:="-arg1 -arg2"
+
+-->
+
+<launch>
+
+    <arg name="my_args"/>
+
+    <!-- RUNNING THE FINGER JOINT SERVICE -->
+	<!-- TODO: This is not working! Understand how to pass arguments -> apc2015 dove_beauty_bar -->
+	<node name="adaptive_simulation_node" pkg="adaptive_simulation" type="main_ros.py" respawn="false" output="screen" args="$(arg my_args)" >
+	</node>
+
+</launch>
