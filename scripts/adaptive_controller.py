@@ -17,7 +17,7 @@ import move_elements as mv_el
 
 DEBUG = False
 
-int_const_syn = 80
+int_const_syn = 100
 int_const_t = 1
 int_const_eul = 1
 
@@ -56,10 +56,13 @@ def integrate_velocities(controller, sim, dt, xform):
     lin_vel_vec = global_vars.arm_command.linear
     ang_vel_vec = global_vars.arm_command.angular
     lin_vel = [lin_vel_vec.x, lin_vel_vec.y, lin_vel_vec.z]
+    # lin_vel = [0.0, 0.0, 0.0]                                 # for debugging rotation vel
     ang_vel = [ang_vel_vec.x, ang_vel_vec.y, ang_vel_vec.z]
+    # ang_vel = [0.0, 0.0, 0.2]                                 # for debugging rotation vel
+    ang_vel_loc = so3.apply(so3.inv(R), ang_vel)
 
     # Transform ang vel into rpy vel
-    euler_vel = transform_ang_vel([0, 0, 0], ang_vel)
+    euler_vel = transform_ang_vel(euler, ang_vel_loc)
 
     # Integrating
     syn_next = syn_curr + global_vars.hand_command * int_const_syn * dt
@@ -95,8 +98,8 @@ def transform_ang_vel(euler, ang_vel):
     y = euler[2]
 
     # Transformation matrix (ref. https://davidbrown3.github.io/2017-07-25/EulerAngles/)
-    # YRP
-    Tyrp = np.array([[1, sym.tan(p)*sym.sin(r), sym.cos(r)*sym.tan(p)],
+    # YPR
+    Typr = np.array([[1, sym.tan(p)*sym.sin(r), sym.cos(r)*sym.tan(p)],
                   [0, sym.cos(r), -sym.sin(r)],
                   [0, sym.sin(r)/sym.cos(p), sym.cos(r)/sym.cos(p)]])
 
@@ -107,7 +110,7 @@ def transform_ang_vel(euler, ang_vel):
 
 
     vec = np.array([ang_vel[0], ang_vel[1], ang_vel[2]])
-    vec_transformed = np.matmul(Trpy, vec)
+    vec_transformed = np.matmul(Typr, vec)
     vec_tup = totuple(vec_transformed) # conversion to tuple for xform
 
     return vec_tup
