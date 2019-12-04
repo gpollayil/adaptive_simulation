@@ -398,7 +398,7 @@ def check_contacts(world, sim, touch_memory, touch_msg):
         touch_msg.data = id_for_pub
 
     # Publishing
-    global_vars.touch_pub.publish(touch_msg)
+    # global_vars.touch_pub.publish(touch_msg)
 
 
 """ 

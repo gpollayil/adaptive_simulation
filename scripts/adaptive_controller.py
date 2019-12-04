@@ -17,7 +17,7 @@ import move_elements as mv_el
 
 DEBUG = False
 
-int_const_syn = 100
+int_const_syn = 80
 int_const_t = 1
 int_const_eul = 1
 
@@ -46,10 +46,11 @@ def integrate_velocities(controller, sim, dt, xform):
         syn_curr = syn_curr[34]
 
     if DEBUG or True:
-        # print 'The present position of the hand encoder is ', syn_curr
-        # print 'The adaptive velocity of hand is ', global_vars.hand_command
-        print 'The adaptive twist of palm is ', global_vars.arm_command
-        #print 'The present position of the palm is ', t, 'and its orientation is', euler
+        print 'The adaptive velocity of hand is ', global_vars.hand_command
+        print 'The adaptive twist of palm is \n', global_vars.arm_command
+        print 'The present position of the hand encoder is ', syn_curr
+        print 'The present pose of the palm is \n', palm_curr
+        # print 'The present position of the palm is ', t, 'and its orientation is', euler
 
     # Getting linear and angular velocities
     lin_vel_vec = global_vars.arm_command.linear
@@ -65,23 +66,24 @@ def integrate_velocities(controller, sim, dt, xform):
     t_next = vectorops.madd(t, lin_vel, int_const_t * dt)
     euler_next = vectorops.madd(euler, euler_vel, int_const_eul * dt)
 
-    print 'euler is ', euler, ' and is of type ', type(euler)
-    print 'euler_vel is ', euler_vel, ' and is of type ', type(euler_vel)
-    print 'euler_next is ', euler_next, ' and is of type ', type(euler_next)
-
     # Convert back for send xform
     palm_R_next = so3.from_rpy(euler_next)
     palm_t_next = t_next
     palm_next = (palm_R_next, palm_t_next)
 
-    print 't is ', t, ' and is of type ', type(t)
-    print 't_next is ', t_next, ' and is of type ', type(t_next)
+    if DEBUG:
+        print 'euler is ', euler, ' and is of type ', type(euler)
+        print 'euler_vel is ', euler_vel, ' and is of type ', type(euler_vel)
+        print 'euler_next is ', euler_next, ' and is of type ', type(euler_next)
 
-    print 'R is ', R, ' and is of type ', type(R)
-    print 'palm_R_next is ', palm_R_next, ' and is of type ', type(palm_R_next)
+        print 't is ', t, ' and is of type ', type(t)
+        print 't_next is ', t_next, ' and is of type ', type(t_next)
 
-    print 'palm_curr is ', palm_curr, ' and is of type ', type(palm_curr)
-    print 'palm_next is ', palm_next, ' and is of type ', type(palm_next)
+        print 'R is ', R, ' and is of type ', type(R)
+        print 'palm_R_next is ', palm_R_next, ' and is of type ', type(palm_R_next)
+
+        print 'palm_curr is ', palm_curr, ' and is of type ', type(palm_curr)
+        print 'palm_next is ', palm_next, ' and is of type ', type(palm_next)
 
     return (True, syn_next, palm_next)
 
@@ -176,13 +178,13 @@ def make(sim, hand, dt):
 
         # print 'The integration of velocity -> success = ', success
 
-        t_lift = 3.0
+        t_lift = 10.0
         if sim.getTime() < t_lift:
             if is_soft_hand:
                 if success:
-                    if DEBUG:
+                    if DEBUG or True:
                         print 'The commanded position of the hand encoder is ', syn_comm
-                        print 'The commanded pose of the palm is ', palm_comm
+                        print 'The commanded pose of the palm is \n', palm_comm
                     hand.setCommand([syn_comm])
                     mv_el.send_moving_base_xform_PID(controller, palm_comm[0], palm_comm[1])
             else:
