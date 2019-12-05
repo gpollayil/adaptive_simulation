@@ -49,6 +49,7 @@ def send_moving_base_xform_PID(controller,R,t):
     and linear base commands simultaneously
     """
     q = controller.getCommandedConfig()
+    print 'THE COMMANDED CONFIG in mv_el is ', q
     for i in range(3):
         q[i] = t[i]
     roll,pitch,yaw = so3.rpy(R)

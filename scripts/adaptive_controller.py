@@ -22,7 +22,7 @@ int_const_t = 1
 int_const_eul = 1
 
 
-def integrate_velocities(controller, sim, dt, xform):
+def integrate_velocities(controller, sim, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
     processing is needed when it is invoked."""
 
@@ -56,10 +56,10 @@ def integrate_velocities(controller, sim, dt, xform):
     lin_vel_vec = global_vars.arm_command.linear
     ang_vel_vec = global_vars.arm_command.angular
     lin_vel = [lin_vel_vec.x, lin_vel_vec.y, lin_vel_vec.z]
-    # lin_vel = [0.0, 0.0, 0.0]                                 # for debugging rotation vel
     ang_vel = [ang_vel_vec.x, ang_vel_vec.y, ang_vel_vec.z]
+    # lin_vel = [0.0, 0.0, 0.0]                                 # for debugging rotation vel
     # ang_vel = [0.0, 0.0, 0.2]                                 # for debugging rotation vel
-    ang_vel_loc = so3.apply(so3.inv(R), ang_vel)
+    ang_vel_loc = so3.apply(so3.inv(R), ang_vel)                # rotating ang vel to local frame
 
     # Transform ang vel into rpy vel
     euler_vel = transform_ang_vel(euler, ang_vel_loc)
@@ -116,10 +116,15 @@ def transform_ang_vel(euler, ang_vel):
     return vec_tup
 
 def totuple(a):
+    # Auxiliary function for convertion to tuple
     try:
         return tuple(totuple(i) for i in a)
     except TypeError:
         return a
+
+# Redefining the get frame function in order to run it only once later
+get_xform_frame = mv_el.get_moving_base_xform
+
 
 def make(sim, hand, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
@@ -149,7 +154,6 @@ def make(sim, hand, dt):
             f2_distal_tactile_sensors + f3_proximal_tactile_sensors + f3_distal_tactile_sensors
 
     sim.updateWorld()
-    xform = mv_el.get_moving_base_xform(sim.controller(0).model())
 
     def control_func(controller):
         """
@@ -177,11 +181,13 @@ def make(sim, hand, dt):
                 pass
 
         # Integrating the velocities
-        (success, syn_comm, palm_comm) = integrate_velocities(controller, sim, dt, xform)
+        (success, syn_comm, palm_comm) = integrate_velocities(controller, sim, dt)
 
         # print 'The integration of velocity -> success = ', success
 
         t_lift = 10.0
+        lift_traj_duration = 0.5
+
         if sim.getTime() < t_lift:
             if is_soft_hand:
                 if success:
@@ -194,9 +200,10 @@ def make(sim, hand, dt):
                 # the controller sends a command to the hand: f1,f2,f3, pre-shape
                 hand.setCommand([0.2, 0.2, 0.2, 0])
 
-        lift_traj_duration = 0.5
         if sim.getTime() > t_lift:
-            # the controller sends a command to the base after 1 s to lift the object
+            xform = mv_el.get_moving_base_xform(sim.controller(0).model()) # for later lifting
+            print 'xform is ', xform
+            # the controller sends a command to the base after t_lift s to lift the object
             t_traj = min(1, max(0, (sim.getTime() - t_lift) / lift_traj_duration))
             desired = se3.mul((so3.identity(), [0, 0, 0.10 * t_traj]), xform)
             mv_el.send_moving_base_xform_PID(controller, desired[0], desired[1])
