@@ -17,7 +17,7 @@ import move_elements as mv_el
 
 DEBUG = False
 
-int_const_syn = 100
+int_const_syn = 1
 int_const_t = 1
 int_const_eul = 1
 
@@ -47,9 +47,9 @@ def integrate_velocities(controller, sim, dt):
 
     if DEBUG or True:
         print 'The adaptive velocity of hand is ', global_vars.hand_command
-        print 'The adaptive twist of palm is \n', global_vars.arm_command
+        # print 'The adaptive twist of palm is \n', global_vars.arm_command
         print 'The present position of the hand encoder is ', syn_curr
-        print 'The present pose of the palm is \n', palm_curr
+        # print 'The present pose of the palm is \n', palm_curr
         # print 'The present position of the palm is ', t, 'and its orientation is', euler
 
     # Getting linear and angular velocities
@@ -187,15 +187,18 @@ def make(sim, hand, dt):
 
         t_lift = 10.0
         lift_traj_duration = 0.5
+        t_alter = 0.05
 
         if sim.getTime() < t_lift:
             if is_soft_hand:
                 if success:
                     if DEBUG or True:
                         print 'The commanded position of the hand encoder is ', syn_comm
-                        print 'The commanded pose of the palm is \n', palm_comm
+                        # print 'The commanded pose of the palm is \n', palm_comm
+
                     hand.setCommand([syn_comm])
                     mv_el.send_moving_base_xform_PID(controller, palm_comm[0], palm_comm[1])
+
             else:
                 # the controller sends a command to the hand: f1,f2,f3, pre-shape
                 hand.setCommand([0.2, 0.2, 0.2, 0])

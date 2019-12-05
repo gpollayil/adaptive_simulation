@@ -227,17 +227,17 @@ def update_simulation(world, sim):
     publish_palm(present_robot, static_transform_stamped)
     publish_object(world, static_transform_stamped)
 
-    rospy.wait_for_service(adaptive_grasping_service_name)
+    # rospy.wait_for_service(adaptive_grasping_service_name)
 
-    adaptive_req = adaptiveGraspRequest()
-    adaptive_req.run_adaptive_grasp = True
-    print 'calling adaptive service!'
-    adaptive_res = global_vars.adaptive_service_client(adaptive_req)
-    print 'called adaptive service!'
-
-    if not adaptive_res:
-        rospy.logerr("Could not call the adaptive grasping... Exiting!")
-        return
+    # adaptive_req = adaptiveGraspRequest()
+    # adaptive_req.run_adaptive_grasp = True
+    # print 'calling adaptive service!'
+    # adaptive_res = global_vars.adaptive_service_client(adaptive_req)
+    # print 'called adaptive service!'
+    #
+    # if not adaptive_res:
+    #     rospy.logerr("Could not call the adaptive grasping... Exiting!")
+    #     return
 
     while vis.shown():
 

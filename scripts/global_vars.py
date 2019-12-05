@@ -21,3 +21,4 @@ global adaptive_service_client
 # For broadcasting the palm frame and object frame
 global palm_broadcaster
 global obj_broadcaster
+
