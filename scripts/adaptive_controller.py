@@ -26,7 +26,7 @@ def integrate_velocities(controller, sim, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
     processing is needed when it is invoked."""
 
-    syn_curr = controller.getSensedConfig()
+    syn_curr = controller.getCommandedConfig()
     palm_curr = mv_el.get_moving_base_xform(sim.controller(0).model())
     R = palm_curr[0]
     t = palm_curr[1]
@@ -46,6 +46,7 @@ def integrate_velocities(controller, sim, dt):
         syn_curr = syn_curr[34]
 
     if DEBUG or True:
+        print 'The integration time is ', dt
         print 'The adaptive velocity of hand is ', global_vars.hand_command
         # print 'The adaptive twist of palm is \n', global_vars.arm_command
         print 'The present position of the hand encoder is ', syn_curr
@@ -185,7 +186,7 @@ def make(sim, hand, dt):
 
         # print 'The integration of velocity -> success = ', success
 
-        t_lift = 10.0
+        t_lift = 1.0
         lift_traj_duration = 0.5
         t_alter = 0.05
 
@@ -205,7 +206,7 @@ def make(sim, hand, dt):
 
         if sim.getTime() > t_lift:
             xform = mv_el.get_moving_base_xform(sim.controller(0).model()) # for later lifting
-            print 'xform is ', xform
+            # print 'xform is ', xform
             # the controller sends a command to the base after t_lift s to lift the object
             t_traj = min(1, max(0, (sim.getTime() - t_lift) / lift_traj_duration))
             desired = se3.mul((so3.identity(), [0, 0, 0.10 * t_traj]), xform)

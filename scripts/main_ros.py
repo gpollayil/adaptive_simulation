@@ -164,10 +164,10 @@ def launch_grasping(passed_robot_name, object_set, object_name):
 
     # Setting up simulation parameters
     vis_preshrink = True    # turn this to true if you want to see the "shrunken" models used for collision detection
-    for l in range(robot.numLinks()):
-        sim.body(robot.link(l)).setCollisionPreshrink(vis_preshrink)
-    for l in range(world.numRigidObjects()):
-        sim.body(world.rigidObject(l)).setCollisionPreshrink(vis_preshrink)
+    for k in range(robot.numLinks()):
+        sim.body(robot.link(k)).setCollisionPreshrink(vis_preshrink)
+    for k in range(world.numRigidObjects()):
+        sim.body(world.rigidObject(k)).setCollisionPreshrink(vis_preshrink)
 
     # Creating Hand emulator from the robot name
     sys.path.append('../../IROS2016ManipulationChallenge')
@@ -178,19 +178,28 @@ def launch_grasping(passed_robot_name, object_set, object_name):
 
     # The result of adaptive_controller.make() is now attached to control the robot
     import adaptive_controller
-    sim.setController(robot, adaptive_controller.make(sim, hand, program.dt))
+    sim_time = program.dt
+    sim.setController(robot, adaptive_controller.make(sim, hand, sim_time))
+
+    # Trying to close the hand a little bit before starting
+    # TODO Spawn robot in different config
+    rob_conf = robot.getConfig()
+    rob_conf[34] = 0.05
+    robot.setConfig(rob_conf)
 
     # Latches the current configuration in the PID controller
+    rob_conf = robot.getConfig()
+    print 'The starting robot configuration is ', rob_conf
     sim.controller(0).setPIDCommand(robot.getConfig(), robot.getVelocity())
 
     # Enabling contact feedback
     sim.enableContactFeedbackAll()
 
     # Updating simulation and visualization
-    return update_simulation(world, sim)
+    return update_simulation(world, sim, sim_time)
 
 
-def update_simulation(world, sim):
+def update_simulation(world, sim, d_time):
     # This code manually updates the visualization while doing other stuff for ROS: publishing joint_states, floating
     # frame's tf, publishing touch data, object pose and twist
 
@@ -219,15 +228,16 @@ def update_simulation(world, sim):
     vis.add("world", world)
     vis.show()
     t0 = time.time()
+    sim_time = d_time
 
-    sim_time = 0.01
+    print 'The sim time in main is ', d_time
 
     # Publishing all what is needed for adaptive grasping and calling it
     publish_joints(present_robot, joints_msg)
     publish_palm(present_robot, static_transform_stamped)
     publish_object(world, static_transform_stamped)
 
-    # rospy.wait_for_service(adaptive_grasping_service_name)
+    rospy.wait_for_service(adaptive_grasping_service_name)
 
     # adaptive_req = adaptiveGraspRequest()
     # adaptive_req.run_adaptive_grasp = True
