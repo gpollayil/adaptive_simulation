@@ -181,12 +181,6 @@ def launch_grasping(passed_robot_name, object_set, object_name):
     sim_time = program.dt
     sim.setController(robot, adaptive_controller.make(sim, hand, sim_time))
 
-    # Trying to close the hand a little bit before starting
-    # TODO Spawn robot in different config
-    rob_conf = robot.getConfig()
-    rob_conf[34] = 0.05
-    robot.setConfig(rob_conf)
-
     # Latches the current configuration in the PID controller
     rob_conf = robot.getConfig()
     print 'The starting robot configuration is ', rob_conf
@@ -237,8 +231,8 @@ def update_simulation(world, sim, d_time):
     publish_palm(present_robot, static_transform_stamped)
     publish_object(world, static_transform_stamped)
 
-    rospy.wait_for_service(adaptive_grasping_service_name)
-
+    # rospy.wait_for_service(adaptive_grasping_service_name)
+    #
     # adaptive_req = adaptiveGraspRequest()
     # adaptive_req.run_adaptive_grasp = True
     # print 'calling adaptive service!'

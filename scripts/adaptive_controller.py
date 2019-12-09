@@ -21,12 +21,41 @@ int_const_syn = 1
 int_const_t = 1
 int_const_eul = 1
 
+# Not reading synergy always but keeping memory
+start_time = 0.0
+now_dur = 0.0
+syn_curr = 0.0
+syn_next = 0.0
+entered_once = False
+got_syn = False
 
 def integrate_velocities(controller, sim, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
     processing is needed when it is invoked."""
 
-    syn_curr = controller.getCommandedConfig()
+    global start_time
+    global now_dur
+    global syn_curr
+    global syn_next
+    global entered_once
+    global got_syn
+
+    if not entered_once:
+        syn_curr = controller.getCommandedConfig()
+        if not syn_curr:
+            got_syn = False
+            entered_once = False
+        else:
+            got_syn = True
+            entered_once = True
+            syn_curr = syn_curr[34]
+            start_time = sim.getTime()
+    else:
+        syn_curr = syn_next
+        now_dur = sim.getTime() - start_time
+        print 'The current simulation duration is', now_dur
+
+
     palm_curr = mv_el.get_moving_base_xform(sim.controller(0).model())
     R = palm_curr[0]
     t = palm_curr[1]
@@ -40,16 +69,15 @@ def integrate_velocities(controller, sim, dt):
     euler = so3.rpy(R)
 
     # Checking if list empty and returning false
-    if not syn_curr:
+    if not got_syn:
         return (False, None, None)
-    else:
-        syn_curr = syn_curr[34]
 
     if DEBUG or True:
         print 'The integration time is ', dt
         print 'The adaptive velocity of hand is ', global_vars.hand_command
         # print 'The adaptive twist of palm is \n', global_vars.arm_command
-        print 'The present position of the hand encoder is ', syn_curr
+        print 'The commanded position of the hand encoder (in memory) is ', syn_curr
+        print 'The present position of the hand encoder (sensed) is ', controller.getCommandedConfig()[34]
         # print 'The present pose of the palm is \n', palm_curr
         # print 'The present position of the palm is ', t, 'and its orientation is', euler
 
@@ -69,6 +97,10 @@ def integrate_velocities(controller, sim, dt):
     syn_next = syn_curr + global_vars.hand_command * int_const_syn * dt
     t_next = vectorops.madd(t, lin_vel, int_const_t * dt)
     euler_next = vectorops.madd(euler, euler_vel, int_const_eul * dt)
+
+    # Saturating synergy
+    if syn_next >= 1.0:
+        syn_next = 1.0
 
     # Convert back for send xform
     palm_R_next = so3.from_rpy(euler_next)
@@ -194,7 +226,7 @@ def make(sim, hand, dt):
             if is_soft_hand:
                 if success:
                     if DEBUG or True:
-                        print 'The commanded position of the hand encoder is ', syn_comm
+                        print 'The commanded position of the hand encoder (in memory) is ', syn_comm
                         # print 'The commanded pose of the palm is \n', palm_comm
 
                     hand.setCommand([syn_comm])
@@ -211,6 +243,7 @@ def make(sim, hand, dt):
             t_traj = min(1, max(0, (sim.getTime() - t_lift) / lift_traj_duration))
             desired = se3.mul((so3.identity(), [0, 0, 0.10 * t_traj]), xform)
             mv_el.send_moving_base_xform_PID(controller, desired[0], desired[1])
+
         # need to manually call the hand emulator
         hand.process({}, dt)
 
