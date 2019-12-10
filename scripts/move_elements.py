@@ -61,3 +61,29 @@ def send_moving_base_xform_PID(controller, R, t):
     q[5] = roll
     v = controller.getCommandedVelocity()
     controller.setPIDCommand(q, v)
+
+def send_moving_base_xform_PID_vel(controller, R, t, v_in):
+    """For a moving base robot model, send a command to move to the
+    rotation matrix R and translation t by setting the velocity
+
+    Note: with the reflex model, can't currently set hand commands
+    and linear base commands simultaneously
+    """
+
+    q = controller.getCommandedConfig()
+    for i in range(3):
+        q[i] = t[i]
+    roll, pitch, yaw = so3.rpy(R)
+    q[3] = yaw
+    q[4] = pitch
+    q[5] = roll
+
+    v = controller.getCommandedVelocity()
+
+    for i in range(3):
+        v[i] = v_in[i]
+    v[3] = v_in[5]  # yaw
+    v[4] = v_in[4]  # pitch
+    v[5] = v_in[3]  # roll
+
+    controller.setPIDCommand(q, v)

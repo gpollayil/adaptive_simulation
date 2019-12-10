@@ -56,7 +56,8 @@ def integrate_velocities(controller, sim, dt):
         print 'The current simulation duration is', now_dur
 
 
-    palm_curr = mv_el.get_moving_base_xform(sim.controller(0).model())
+    rob = sim.controller(0).model()
+    palm_curr = mv_el.get_moving_base_xform(rob)
     R = palm_curr[0]
     t = palm_curr[1]
 
@@ -75,9 +76,11 @@ def integrate_velocities(controller, sim, dt):
     if DEBUG or True:
         print 'The integration time is ', dt
         print 'The adaptive velocity of hand is ', global_vars.hand_command
-        # print 'The adaptive twist of palm is \n', global_vars.arm_command
-        print 'The commanded position of the hand encoder (in memory) is ', syn_curr
-        print 'The present position of the hand encoder (sensed) is ', controller.getCommandedConfig()[34]
+        print 'The adaptive twist of palm is \n', global_vars.arm_command
+        # print 'The commanded position of the hand encoder (in memory) is ', syn_curr
+        # print 'The present position of the hand encoder (sensed) is ', controller.getCommandedConfig()[34]
+        v =  rob.getVelocity()
+        print 'The actual velocity of the robot is ', v
         # print 'The present pose of the palm is \n', palm_curr
         # print 'The present position of the palm is ', t, 'and its orientation is', euler
 
@@ -92,9 +95,13 @@ def integrate_velocities(controller, sim, dt):
 
     # Transform ang vel into rpy vel
     euler_vel = transform_ang_vel(euler, ang_vel_loc)
+    palm_vel = []
+    palm_vel.extend(lin_vel)
+    palm_vel.extend([euler_vel[0], euler_vel[1], euler_vel[2]]) # appending
 
     # Integrating
-    syn_next = syn_curr + global_vars.hand_command * int_const_syn * dt
+    syn_vel = global_vars.hand_command
+    syn_next = syn_curr + syn_vel * int_const_syn * dt
     t_next = vectorops.madd(t, lin_vel, int_const_t * dt)
     euler_next = vectorops.madd(euler, euler_vel, int_const_eul * dt)
 
@@ -107,21 +114,21 @@ def integrate_velocities(controller, sim, dt):
     palm_t_next = t_next
     palm_next = (palm_R_next, palm_t_next)
 
-    if DEBUG:
+    if DEBUG or True:
         print 'euler is ', euler, ' and is of type ', type(euler)
         print 'euler_vel is ', euler_vel, ' and is of type ', type(euler_vel)
         print 'euler_next is ', euler_next, ' and is of type ', type(euler_next)
+        #
+        # print 't is ', t, ' and is of type ', type(t)
+        # print 't_next is ', t_next, ' and is of type ', type(t_next)
+        #
+        # print 'R is ', R, ' and is of type ', type(R)
+        # print 'palm_R_next is ', palm_R_next, ' and is of type ', type(palm_R_next)
+        #
+        # print 'palm_curr is ', palm_curr, ' and is of type ', type(palm_curr)
+        # print 'palm_next is ', palm_next, ' and is of type ', type(palm_next)
 
-        print 't is ', t, ' and is of type ', type(t)
-        print 't_next is ', t_next, ' and is of type ', type(t_next)
-
-        print 'R is ', R, ' and is of type ', type(R)
-        print 'palm_R_next is ', palm_R_next, ' and is of type ', type(palm_R_next)
-
-        print 'palm_curr is ', palm_curr, ' and is of type ', type(palm_curr)
-        print 'palm_next is ', palm_next, ' and is of type ', type(palm_next)
-
-    return (True, syn_next, palm_next)
+    return (True, syn_next, palm_next, syn_vel, palm_vel)
 
 def transform_ang_vel(euler, ang_vel):
     """ Transforms an omega (ang. vel.) into rpy or ypr parametrization """
@@ -163,29 +170,6 @@ def make(sim, hand, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
     processing is needed when it is invoked."""
 
-    is_reflex_col = False
-    is_reflex = False
-    is_soft_hand = False
-
-    if not isinstance(hand, plugins.actuators.CompliantHandEmulator.CompliantHandEmulator):
-        is_reflex_col = True
-    else:
-        if isinstance(hand, plugins.soft_hand.HandEmulator):
-            is_soft_hand = True
-        else:
-            is_reflex = True
-
-    if not is_soft_hand:
-        # get references to the robot's sensors (not properly functioning in Klamp't 0.6.x)
-        f1_proximal_tactile_sensors = [sim.controller(0).sensor("f1_proximal_tactile_%d" % (i,)) for i in range(1, 6)]
-        f1_distal_tactile_sensors = [sim.controller(0).sensor("f1_distal_tactile_%d" % (i,)) for i in range(1, 6)]
-        f2_proximal_tactile_sensors = [sim.controller(0).sensor("f2_proximal_tactile_%d" % (i,)) for i in range(1, 6)]
-        f2_distal_tactile_sensors = [sim.controller(0).sensor("f2_distal_tactile_%d" % (i,)) for i in range(1, 6)]
-        f3_proximal_tactile_sensors = [sim.controller(0).sensor("f3_proximal_tactile_%d" % (i,)) for i in range(1, 6)]
-        f3_distal_tactile_sensors = [sim.controller(0).sensor("f3_distal_tactile_%d" % (i,)) for i in range(1, 6)]
-        contact_sensors = f1_proximal_tactile_sensors + f1_distal_tactile_sensors + f2_proximal_tactile_sensors + \
-            f2_distal_tactile_sensors + f3_proximal_tactile_sensors + f3_distal_tactile_sensors
-
     sim.updateWorld()
 
     def control_func(controller):
@@ -193,48 +177,25 @@ def make(sim, hand, dt):
         Place your code here... for a more sophisticated controller you could also create a class
         where the control loop goes in the __call__ method.
         """
-        if not is_soft_hand:
-            # print the contact sensors... you can safely take this out if you don't want to use it
-            try:
-                f1_contact = [s.getMeasurements()[0] for s in f1_proximal_tactile_sensors] + [s.getMeasurements()[0] for
-                                                                                              s in
-                                                                                              f1_distal_tactile_sensors]
-                f2_contact = [s.getMeasurements()[0] for s in f2_proximal_tactile_sensors] + [s.getMeasurements()[0] for
-                                                                                              s in
-                                                                                              f2_distal_tactile_sensors]
-                f3_contact = [s.getMeasurements()[0] for s in f3_proximal_tactile_sensors] + [s.getMeasurements()[0] for
-                                                                                              s in
-                                                                                              f3_distal_tactile_sensors]
-                if DEBUG:
-                    print "Contact sensors"
-                    print "  finger 1:", [int(v) for v in f1_contact]
-                    print "  finger 2:", [int(v) for v in f2_contact]
-                    print "  finger 3:", [int(v) for v in f3_contact]
-            except:
-                pass
 
         # Integrating the velocities
-        (success, syn_comm, palm_comm) = integrate_velocities(controller, sim, dt)
+        (success, syn_comm, palm_comm, syn_vel_comm, palm_vel_comm) = integrate_velocities(controller, sim, dt)
 
         # print 'The integration of velocity -> success = ', success
 
-        t_lift = 1.0
+        t_lift = 1000.0
         lift_traj_duration = 0.5
         t_alter = 0.05
 
         if sim.getTime() < t_lift:
-            if is_soft_hand:
-                if success:
-                    if DEBUG or True:
-                        print 'The commanded position of the hand encoder (in memory) is ', syn_comm
-                        # print 'The commanded pose of the palm is \n', palm_comm
-
-                    hand.setCommand([syn_comm])
-                    mv_el.send_moving_base_xform_PID(controller, palm_comm[0], palm_comm[1])
-
-            else:
-                # the controller sends a command to the hand: f1,f2,f3, pre-shape
-                hand.setCommand([0.2, 0.2, 0.2, 0])
+            if success:
+                if DEBUG or True:
+                    print 'The commanded position of the hand encoder (in memory) is ', syn_comm
+                    print 'The commanded position of the palm is \n', palm_comm
+                    print 'The commanded velocity of the palm is \n', palm_vel_comm
+                hand.setCommandVel([syn_comm], syn_vel_comm)
+                mv_el.send_moving_base_xform_PID_vel(controller, palm_comm[0], palm_comm[1], palm_vel_comm)
+                # mv_el.send_moving_base_xform_PID(controller, palm_comm[0], palm_comm[1])
 
         if sim.getTime() > t_lift:
             xform = mv_el.get_moving_base_xform(sim.controller(0).model()) # for later lifting
