@@ -372,7 +372,7 @@ def check_contacts(world, sim, touch_memory, touch_msg):
                 first_link = world.getName(i)
                 second_link = world.getName(j)
 
-                if DEBUG:
+                if DEBUG or True:
                     print " ", first_link, "-", second_link, "contact force", cont_f, "and torque", cont_t
 
                 # Checking if in touch id dict and saving to touches now

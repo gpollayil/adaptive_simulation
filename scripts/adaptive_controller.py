@@ -73,7 +73,7 @@ def integrate_velocities(controller, sim, dt):
     if not got_syn:
         return (False, None, None)
 
-    if DEBUG or True:
+    if DEBUG:
         print 'The integration time is ', dt
         print 'The adaptive velocity of hand is ', global_vars.hand_command
         print 'The adaptive twist of palm is \n', global_vars.arm_command
@@ -114,7 +114,7 @@ def integrate_velocities(controller, sim, dt):
     palm_t_next = t_next
     palm_next = (palm_R_next, palm_t_next)
 
-    if DEBUG or True:
+    if DEBUG:
         print 'euler is ', euler, ' and is of type ', type(euler)
         print 'euler_vel is ', euler_vel, ' and is of type ', type(euler_vel)
         print 'euler_next is ', euler_next, ' and is of type ', type(euler_next)
@@ -189,7 +189,7 @@ def make(sim, hand, dt):
 
         if sim.getTime() < t_lift:
             if success:
-                if DEBUG or True:
+                if DEBUG:
                     print 'The commanded position of the hand encoder (in memory) is ', syn_comm
                     print 'The commanded position of the palm is \n', palm_comm
                     print 'The commanded velocity of the palm is \n', palm_vel_comm
