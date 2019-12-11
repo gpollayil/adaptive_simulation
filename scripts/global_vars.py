@@ -15,8 +15,9 @@ global touch_pub
 global obj_pose_pub
 global obj_twist_pub
 
-# Service client for adaptive grasping
+# Service client for adaptive grasping and the bool stating if adaptive grasping is running or not
 global adaptive_service_client
+global is_adaptive_running
 
 # For broadcasting the palm frame and object frame
 global palm_broadcaster

@@ -172,15 +172,16 @@ def make(sim, hand, dt):
         where the control loop goes in the __call__ method.
         """
 
-        # Integrating the velocities
-        (success, syn_comm, palm_comm, syn_vel_comm, palm_vel_comm) = integrate_velocities(controller, sim, dt)
-
-        # print 'The integration of velocity -> success = ', success
-
         t_lift = 1000.0
         lift_traj_duration = 0.5
 
-        if sim.getTime() < t_lift:
+        if global_vars.is_adaptive_running:
+
+            # Integrating the velocities
+            (success, syn_comm, palm_comm, syn_vel_comm, palm_vel_comm) = integrate_velocities(controller, sim, dt)
+
+            # print 'The integration of velocity -> success = ', success
+
             if success:
                 if DEBUG:
                     print 'The commanded position of the hand encoder (in memory) is ', syn_comm
@@ -189,8 +190,10 @@ def make(sim, hand, dt):
                 hand.setCommandVel([syn_comm], syn_vel_comm)
                 mv_el.send_moving_base_xform_PID_vel(controller, palm_comm[0], palm_comm[1], palm_vel_comm)
                 # mv_el.send_moving_base_xform_PID(controller, palm_comm[0], palm_comm[1])
+        else:
 
-        if sim.getTime() > t_lift:
+            print 'Finished the ADAPTIVE GRASPING NOW! LIFTING!!!'
+
             xform = mv_el.get_moving_base_xform(sim.controller(0).model())  # for later lifting
             # print 'xform is ', xform
             # the controller sends a command to the base after t_lift s to lift the object

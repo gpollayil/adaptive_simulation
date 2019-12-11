@@ -80,8 +80,9 @@ object_frame_name = 'object'
 adaptive_grasping_service_name = '/adaptive_grasper_service'
 
 # For contact publishing
-palm_force_thresh = 2
+palm_force_thresh = 2000
 palm_link_name = 'soft_hand_palm_link'
+max_num_contacts = 3
 touch_pub_topic_name = '/touching_finger_topic'
 touch_id_dict = \
     {'soft_hand_thumb_distal_link': 1,
@@ -231,7 +232,8 @@ def update_simulation(world, sim, d_time):
 
     # Waiting and calling the adaptive grasping
     rospy.wait_for_service(adaptive_grasping_service_name)
-    call_adaptive_grasping(True)
+    if not call_adaptive_grasping(True):
+        return
 
     while vis.shown():
 
@@ -247,7 +249,12 @@ def update_simulation(world, sim, d_time):
         publish_object(world, static_transform_stamped)
 
         # Getting the new touch id and publishing it while checking for algorithm stopping conditions
-        check_contacts(world, sim, touch_memory, touch_msg)
+        force_palm, num_contacts = check_contacts(world, sim, touch_memory, touch_msg)
+
+        # Stopping adaptive grasping if stopping conditions (too much force on palm or too many contacts)
+        if force_palm or num_contacts >= max_num_contacts:
+            if not call_adaptive_grasping(False):
+                return
 
         # Sleeping a little bit
         t1 = time.time()
@@ -267,7 +274,11 @@ def call_adaptive_grasping(bool_run_grasp):
 
     if not adaptive_res:
         rospy.logerr("Could not call the adaptive grasping... Exiting!")
-        return
+        return False
+
+    # All is well and setting adaptive bool
+    global_vars.is_adaptive_running = bool_run_grasp
+    return True
 
 
 def publish_joints(robot, msg_joints):
