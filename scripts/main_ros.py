@@ -231,17 +231,9 @@ def update_simulation(world, sim, d_time):
     publish_palm(present_robot, static_transform_stamped)
     publish_object(world, static_transform_stamped)
 
+    # Waiting and calling the adaptive grasping
     rospy.wait_for_service(adaptive_grasping_service_name)
-
-    adaptive_req = adaptiveGraspRequest()
-    adaptive_req.run_adaptive_grasp = True
-    print 'calling adaptive service!'
-    adaptive_res = global_vars.adaptive_service_client(adaptive_req)
-    print 'called adaptive service!'
-
-    if not adaptive_res:
-        rospy.logerr("Could not call the adaptive grasping... Exiting!")
-        return
+    call_adaptive_grasping(True)
 
     while vis.shown():
 
@@ -251,16 +243,12 @@ def update_simulation(world, sim, d_time):
         sim.updateWorld()
         vis.unlock()
 
-        # Publishing joint states
+        # Publishing joint states, palm frame and object frame, pose and twist
         publish_joints(present_robot, joints_msg)
-
-        # Publishing palm frame
         publish_palm(present_robot, static_transform_stamped)
-
-        # Publishing object frame, pose and twist
         publish_object(world, static_transform_stamped)
 
-        # TODO: here add auxiliary function for getting the new touch id and publish it
+        # Getting the new touch id and publishing it while checking for algorithm stopping conditions
         check_contacts(world, sim, touch_memory, touch_msg)
 
         # Sleeping a little bit
@@ -269,6 +257,19 @@ def update_simulation(world, sim, d_time):
         t0 = t1
 
     return
+
+
+def call_adaptive_grasping(bool_run_grasp):
+    """ Auxiliary function to start or end the adaptive grasping"""
+    adaptive_req = adaptiveGraspRequest()
+    adaptive_req.run_adaptive_grasp = bool_run_grasp
+    print 'calling adaptive service!'
+    adaptive_res = global_vars.adaptive_service_client(adaptive_req)
+    print 'called adaptive service!'
+
+    if not adaptive_res:
+        rospy.logerr("Could not call the adaptive grasping... Exiting!")
+        return
 
 
 def publish_joints(robot, msg_joints):

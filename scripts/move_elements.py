@@ -1,5 +1,5 @@
 """
-This auxiliary file contains the some fuctions used in main.py.
+This auxiliary file contains the some functions used in main.py.
 These functions move the object and the robot in the Klampt world
 """
 

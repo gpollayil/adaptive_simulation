@@ -9,9 +9,6 @@ from klampt.math import se3, so3, vectorops
 import math as sym
 import numpy as np
 
-from geometry_msgs.msg import Pose
-from tf import transformations
-
 import global_vars
 import move_elements as mv_el
 
@@ -28,6 +25,7 @@ syn_curr = 0.0
 syn_next = 0.0
 entered_once = False
 got_syn = False
+
 
 def integrate_velocities(controller, sim, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
@@ -55,7 +53,6 @@ def integrate_velocities(controller, sim, dt):
         now_dur = sim.getTime() - start_time
         # print 'The current simulation duration is', now_dur
 
-
     rob = sim.controller(0).model()
     palm_curr = mv_el.get_moving_base_xform(rob)
     R = palm_curr[0]
@@ -71,7 +68,7 @@ def integrate_velocities(controller, sim, dt):
 
     # Checking if list empty and returning false
     if not got_syn:
-        return (False, None, None)
+        return False, None, None
 
     if DEBUG:
         print 'The integration time is ', dt
@@ -79,7 +76,7 @@ def integrate_velocities(controller, sim, dt):
         print 'The adaptive twist of palm is \n', global_vars.arm_command
         # print 'The commanded position of the hand encoder (in memory) is ', syn_curr
         # print 'The present position of the hand encoder (sensed) is ', controller.getCommandedConfig()[34]
-        v =  rob.getVelocity()
+        v = rob.getVelocity()
         print 'The actual velocity of the robot is ', v
         # print 'The present pose of the palm is \n', palm_curr
         # print 'The present position of the palm is ', t, 'and its orientation is', euler
@@ -89,18 +86,17 @@ def integrate_velocities(controller, sim, dt):
     ang_vel_vec = global_vars.arm_command.angular
     lin_vel = [lin_vel_vec.x, lin_vel_vec.y, lin_vel_vec.z]
     ang_vel = [ang_vel_vec.x, ang_vel_vec.y, ang_vel_vec.z]
-    # lin_vel = [0.0, 0.0, 0.0]                                 # for debugging rotation vel
-    # ang_vel = [0.0, 0.0, 0.2]                                 # for debugging rotation vel
-    ang_vel_loc = so3.apply(so3.inv(R), ang_vel)                # rotating ang vel to local frame
+
+    ang_vel_loc = so3.apply(so3.inv(R), ang_vel)  # rotating ang vel to local frame
 
     # Transform ang vel into rpy vel
     euler_vel = transform_ang_vel(euler, ang_vel_loc)
     palm_vel = []
     palm_vel.extend(lin_vel)
-    palm_vel.extend([euler_vel[0], euler_vel[1], euler_vel[2]]) # appending
+    palm_vel.extend([euler_vel[0], euler_vel[1], euler_vel[2]])  # appending
+    syn_vel = global_vars.hand_command
 
     # Integrating
-    syn_vel = global_vars.hand_command
     syn_next = syn_curr + syn_vel * int_const_syn * dt
     t_next = vectorops.madd(t, lin_vel, int_const_t * dt)
     euler_next = vectorops.madd(euler, euler_vel, int_const_eul * dt)
@@ -128,7 +124,8 @@ def integrate_velocities(controller, sim, dt):
         # print 'palm_curr is ', palm_curr, ' and is of type ', type(palm_curr)
         # print 'palm_next is ', palm_next, ' and is of type ', type(palm_next)
 
-    return (True, syn_next, palm_next, syn_vel, palm_vel)
+    return True, syn_next, palm_next, syn_vel, palm_vel
+
 
 def transform_ang_vel(euler, ang_vel):
     """ Transforms an omega (ang. vel.) into rpy or ypr parametrization """
@@ -139,21 +136,21 @@ def transform_ang_vel(euler, ang_vel):
 
     # Transformation matrix (ref. https://davidbrown3.github.io/2017-07-25/EulerAngles/)
     # YPR
-    Typr = np.array([[1, sym.tan(p)*sym.sin(r), sym.cos(r)*sym.tan(p)],
-                  [0, sym.cos(r), -sym.sin(r)],
-                  [0, sym.sin(r)/sym.cos(p), sym.cos(r)/sym.cos(p)]])
+    Typr = np.array([[1, sym.tan(p) * sym.sin(r), sym.cos(r) * sym.tan(p)],
+                     [0, sym.cos(r), -sym.sin(r)],
+                     [0, sym.sin(r) / sym.cos(p), sym.cos(r) / sym.cos(p)]])
 
     # RPY
-    Trpy = np.array([[sym.cos(y)/sym.cos(p), -sym.sin(y)/sym.cos(p), 0],
-                  [sym.sin(y), sym.cos(y), 0],
-                  [-(sym.cos(y)*sym.sin(p))/sym.cos(p), (sym.sin(p)*sym.sin(y))/sym.cos(p), 1]])
-
+    Trpy = np.array([[sym.cos(y) / sym.cos(p), -sym.sin(y) / sym.cos(p), 0],
+                     [sym.sin(y), sym.cos(y), 0],
+                     [-(sym.cos(y) * sym.sin(p)) / sym.cos(p), (sym.sin(p) * sym.sin(y)) / sym.cos(p), 1]])
 
     vec = np.array([ang_vel[0], ang_vel[1], ang_vel[2]])
     vec_transformed = np.matmul(Typr, vec)
-    vec_tup = totuple(vec_transformed) # conversion to tuple for xform
+    vec_tup = totuple(vec_transformed)  # conversion to tuple for xform
 
     return vec_tup
+
 
 def totuple(a):
     # Auxiliary function for convertion to tuple
@@ -161,9 +158,6 @@ def totuple(a):
         return tuple(totuple(i) for i in a)
     except TypeError:
         return a
-
-# Redefining the get frame function in order to run it only once later
-get_xform_frame = mv_el.get_moving_base_xform
 
 
 def make(sim, hand, dt):
@@ -185,7 +179,6 @@ def make(sim, hand, dt):
 
         t_lift = 1000.0
         lift_traj_duration = 0.5
-        t_alter = 0.05
 
         if sim.getTime() < t_lift:
             if success:
@@ -198,7 +191,7 @@ def make(sim, hand, dt):
                 # mv_el.send_moving_base_xform_PID(controller, palm_comm[0], palm_comm[1])
 
         if sim.getTime() > t_lift:
-            xform = mv_el.get_moving_base_xform(sim.controller(0).model()) # for later lifting
+            xform = mv_el.get_moving_base_xform(sim.controller(0).model())  # for later lifting
             # print 'xform is ', xform
             # the controller sends a command to the base after t_lift s to lift the object
             t_traj = min(1, max(0, (sim.getTime() - t_lift) / lift_traj_duration))
