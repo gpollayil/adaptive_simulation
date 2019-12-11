@@ -53,7 +53,7 @@ def integrate_velocities(controller, sim, dt):
     else:
         syn_curr = syn_next
         now_dur = sim.getTime() - start_time
-        print 'The current simulation duration is', now_dur
+        # print 'The current simulation duration is', now_dur
 
 
     rob = sim.controller(0).model()
@@ -114,7 +114,7 @@ def integrate_velocities(controller, sim, dt):
     palm_t_next = t_next
     palm_next = (palm_R_next, palm_t_next)
 
-    if DEBUG:
+    if DEBUG or True:
         print 'euler is ', euler, ' and is of type ', type(euler)
         print 'euler_vel is ', euler_vel, ' and is of type ', type(euler_vel)
         print 'euler_next is ', euler_next, ' and is of type ', type(euler_next)
