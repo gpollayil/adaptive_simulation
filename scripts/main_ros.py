@@ -4,6 +4,7 @@ import importlib
 # Generic Imports
 import os
 import time
+import numpy as np
 
 # ROS Imports
 import roslib
@@ -60,7 +61,8 @@ objects = {'apc2015': [f for f in os.listdir(path_prefix + 'data/objects/apc2015
 robot_name = "soft_hand"                                                # robot model
 terrain_file = path_prefix + "data/terrains/plane.env"                  # terrain
 
-# ROS Params
+# ROS PARAMS
+
 # For joint state and floating frame publishing
 hand_topic = '/right_hand/velocity_controller/command'
 arm_topic = '/panda_arm/cartesian_velocity_controller/command'
@@ -78,13 +80,9 @@ object_frame_name = 'object'
 adaptive_grasping_service_name = '/adaptive_grasper_service'
 
 # For contact publishing
+palm_force_thresh = 2
+palm_link_name = 'soft_hand_palm_link'
 touch_pub_topic_name = '/touching_finger_topic'
-finger_links_id_dict = \
-    {39: 'soft_hand_thumb_distal_link',
-     12: 'soft_hand_index_distal_link',
-     26: 'soft_hand_middle_distal_link',
-     33: 'soft_hand_ring_distal_link',
-     19: 'soft_hand_little_distal_link'}                              # Looked this up as klampt simulation starts
 touch_id_dict = \
     {'soft_hand_thumb_distal_link': 1,
      'soft_hand_index_distal_link': 2,
@@ -138,7 +136,7 @@ def launch_grasping(passed_robot_name, object_set, object_name):
     robot = mk_el.make_robot(passed_robot_name, world)
     mk_el.make_object(object_set, object_name, world)
 
-    # NOT CLEAR WHAT THIS DOES... TODO: CHECK WHILE TESTING!!!
+    # NOT CLEAR WHAT THIS DOES... AS OF NOW THIS WORKS... HOWEVER -> TODO: Check this out!!!
     do_edit = True
     xform = resource.get("%s/default_initial_%s.xform" % (object_set, passed_robot_name),
                          description="Initial hand transform",
@@ -186,8 +184,8 @@ def launch_grasping(passed_robot_name, object_set, object_name):
     print 'The starting robot configuration is ', rob_conf
     sim.controller(0).setPIDCommand(robot.getConfig(), robot.getVelocity())
 
-    # Enabling contact feedback
-    sim.enableContactFeedbackAll()
+    # Enabling contact feedback (NOT NEEDED FOR GETTING CONTACTS)
+    # sim.enableContactFeedbackAll()
 
     # Updating simulation and visualization
     return update_simulation(world, sim, sim_time)
@@ -361,12 +359,17 @@ def publish_object(world_, msg):
 
 
 def check_contacts(world, sim, touch_memory, touch_msg):
-    # Checks for contacts and returns an ids of touching fingers
+    """
+    Checks for contacts and publishes available contacts
+    outputs:    bool big_palm_force -> true if the force between palm and object is over a threshold (defined in head)
+                int len(touch_memory) -> number of fingers that touch object (not touches_now because of repetitions)
+    """
     touches_now = []
+    big_palm_force = False
     for i in range(world.numIDs()):
         for j in range(i+1, world.numIDs()):
-            # Looping over everything and checking if the distal links are present
-            # TODO: Do this for all links (Mods will be needed also in contact state where the finger_FK is called)
+            # Looping over everything and checking if the distal links are present and creating touches array
+            # TODO: Do this for all links (check if mods needed also in contact state where the finger_FK is called)
             if sim.inContact(i, j):
                 cont_f = sim.contactForce(i, j)
                 cont_t = sim.contactTorque(i, j)
@@ -376,18 +379,22 @@ def check_contacts(world, sim, touch_memory, touch_msg):
                 if DEBUG or True:
                     print " ", first_link, "-", second_link, "contact force", cont_f, "and torque", cont_t
 
+                # Checking if palm is squeezing object with high force
+                if palm_link_name in first_link or palm_link_name in second_link:
+                    if np.linalg.norm(cont_f) > palm_force_thresh:
+                        big_palm_force = True
+
                 # Checking if in touch id dict and saving to touches now
                 for k in touch_id_dict:
                     if k in first_link or k in second_link:
-                        if DEBUG:
-                            print 'FOUND IN TOUCH_DICT!!!!'
-                        touches_now.append(touch_id_dict.get(k))
+                        if np.linalg.norm(cont_f):
+                            touches_now.append(touch_id_dict.get(k))
 
     # The first id in touches now which is not in touch memory will be published
     if DEBUG:
-        print 'The touch_memory is ', touch_memory
         print 'The touches_now are ', touches_now
 
+    # Updating touch memory from present touches
     id_for_pub = 0
     for k in touches_now:
         if k not in touch_memory:
@@ -395,7 +402,8 @@ def check_contacts(world, sim, touch_memory, touch_msg):
             touch_memory.append(id_for_pub)
             break
 
-    print 'touch_memory is ', touch_memory
+    if DEBUG or True:
+        print 'touch_memory is ', touch_memory
 
     if touch_memory:
         touch_msg.data = touch_memory[-1]
@@ -404,6 +412,12 @@ def check_contacts(world, sim, touch_memory, touch_msg):
 
     # Publishing
     # global_vars.touch_pub.publish(touch_msg)
+
+    if DEBUG or True:
+        print 'The big_palm_force is', big_palm_force, 'and the number of touches are', len(touch_memory)
+
+    # Returning
+    return big_palm_force, len(touch_memory)
 
 
 """ 

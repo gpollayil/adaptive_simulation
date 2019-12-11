@@ -22,7 +22,7 @@ object_geom_file_patterns = {
 object_masses = {
     'apc2015': dict(),
 }
-default_object_mass = 0.05
+default_object_mass = 0.3
 object_template_fn = path_prefix + 'data/objects/object_template.obj'
 
 def make_robot(robot_name, world):

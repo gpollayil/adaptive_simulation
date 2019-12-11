@@ -110,7 +110,7 @@ def integrate_velocities(controller, sim, dt):
     palm_t_next = t_next
     palm_next = (palm_R_next, palm_t_next)
 
-    if DEBUG or True:
+    if DEBUG:
         print 'euler is ', euler, ' and is of type ', type(euler)
         print 'euler_vel is ', euler_vel, ' and is of type ', type(euler_vel)
         print 'euler_next is ', euler_next, ' and is of type ', type(euler_next)
