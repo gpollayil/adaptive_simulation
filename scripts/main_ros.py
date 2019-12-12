@@ -80,7 +80,7 @@ object_frame_name = 'object'
 adaptive_grasping_service_name = '/adaptive_grasper_service'
 
 # For contact publishing
-palm_force_thresh = 2000
+palm_force_thresh = 5
 palm_link_name = 'soft_hand_palm_link'
 max_num_contacts = 3
 touch_pub_topic_name = '/touching_finger_topic'
@@ -235,6 +235,11 @@ def update_simulation(world, sim, d_time):
     if not call_adaptive_grasping(True):
         return
 
+    # Waiting for a message in the hand and palm command topics
+    # This is to avoid the integration in adaptive_controller crashing
+    rospy.wait_for_message(hand_topic, Float64, 3.0)
+    rospy.wait_for_message(arm_topic, Twist, 3.0)
+
     while vis.shown():
 
         # Simulating and updating visualization
@@ -253,8 +258,9 @@ def update_simulation(world, sim, d_time):
 
         # Stopping adaptive grasping if stopping conditions (too much force on palm or too many contacts)
         if force_palm or num_contacts >= max_num_contacts:
-            if not call_adaptive_grasping(False):
-                return
+            if global_vars.is_adaptive_running:
+                if not call_adaptive_grasping(False):
+                    return
 
         # Sleeping a little bit
         t1 = time.time()

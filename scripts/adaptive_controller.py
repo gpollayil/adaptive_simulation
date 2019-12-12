@@ -26,6 +26,12 @@ syn_next = 0.0
 entered_once = False
 got_syn = False
 
+# For lifting
+t_lift = 0.0                    # will be set later
+lift_trajectory_duration = 4.0
+syn_closed = 0.38               # the value of synergy after which lifting is performed
+xform = None                    # will be set later
+
 
 def integrate_velocities(controller, sim, dt):
     """The make() function returns a 1-argument function that takes a SimRobotController and performs whatever
@@ -39,14 +45,14 @@ def integrate_velocities(controller, sim, dt):
     global got_syn
 
     if not entered_once:
-        syn_curr = controller.getCommandedConfig()
-        if not syn_curr:
+        syn_vec = controller.getCommandedConfig()
+        if not syn_vec:
             got_syn = False
             entered_once = False
         else:
             got_syn = True
             entered_once = True
-            syn_curr = syn_curr[34]
+            syn_curr = syn_vec[34]
             start_time = sim.getTime()
     else:
         syn_curr = syn_next
@@ -172,8 +178,10 @@ def make(sim, hand, dt):
         where the control loop goes in the __call__ method.
         """
 
-        t_lift = 1000.0
-        lift_traj_duration = 0.5
+        global t_lift
+        global lift_trajectory_duration
+        global syn_closed
+        global xform
 
         if global_vars.is_adaptive_running:
 
@@ -194,12 +202,28 @@ def make(sim, hand, dt):
 
             print 'Finished the ADAPTIVE GRASPING NOW! LIFTING!!!'
 
-            xform = mv_el.get_moving_base_xform(sim.controller(0).model())  # for later lifting
-            # print 'xform is ', xform
-            # the controller sends a command to the base after t_lift s to lift the object
-            t_traj = min(1, max(0, (sim.getTime() - t_lift) / lift_traj_duration))
-            desired = se3.mul((so3.identity(), [0, 0, 0.10 * t_traj]), xform)
-            mv_el.send_moving_base_xform_PID(controller, desired[0], desired[1])
+            if not global_vars.got_pres_pose:       # this will be set to false after getting xform
+                t_lift = sim.getTime()
+
+            # Wait and close the hand then lift
+            syn_now = controller.getSensedConfig()[34]
+            print 'syn_now is ', syn_now
+            if syn_now < syn_closed:
+                # Closing hand completely
+                hand.setCommand([1.0])
+                t_lift = sim.getTime()
+                print 'Closing hand completely!!!'
+            else:
+                print 'Hand is closed sufficiently! Sending the lift pose now!!!'
+                # Getting the pose only once and sending lift trajectory
+                if not global_vars.got_pres_pose:
+                    xform = mv_el.get_moving_base_xform(sim.controller(0).model())  # for later lifting
+                    global_vars.got_pres_pose = True
+                print 'xform is ', xform
+                # the controller sends command to the base
+                t_trajectory = min(1, max(0, (sim.getTime() - t_lift) / lift_trajectory_duration))
+                desired = se3.mul((so3.identity(), [0, 0, 0.10 * t_trajectory]), xform)
+                mv_el.send_moving_base_xform_PID(controller, desired[0], desired[1])
 
         # need to manually call the hand emulator
         hand.process({}, dt)

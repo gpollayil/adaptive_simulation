@@ -23,3 +23,6 @@ global is_adaptive_running
 global palm_broadcaster
 global obj_broadcaster
 
+# For sending lift trajectory correctly: post grasp pose is sensed only once
+global got_pres_pose
+got_pres_pose = False
