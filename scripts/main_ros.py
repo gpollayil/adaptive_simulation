@@ -80,16 +80,21 @@ object_frame_name = 'object'
 adaptive_grasping_service_name = '/adaptive_grasper_service'
 
 # For contact publishing
-palm_force_thresh = 5
+palm_force_thresh = 20
 palm_link_name = 'soft_hand_palm_link'
-max_num_contacts = 3
+max_num_contacts = 5
 touch_pub_topic_name = '/touching_finger_topic'
 touch_id_dict = \
     {'soft_hand_thumb_distal_link': 1,
      'soft_hand_index_distal_link': 2,
      'soft_hand_middle_distal_link': 3,
      'soft_hand_ring_distal_link': 4,
-     'soft_hand_little_distal_link': 5}                               # Convention in adaptive_params.yaml
+     'soft_hand_little_distal_link': 5,
+     'soft_hand_thumb_middle_link': 1,
+     'soft_hand_index_middle_link': 2,
+     'soft_hand_middle_middle_link': 3,
+     'soft_hand_ring_middle_link': 4,
+     'soft_hand_little_middle_link': 5}                               # Convention in adaptive_params.yaml
 
 joints_dict = {
     6: 'soft_hand_index_abd_joint', 7: 'soft_hand_index_inner_joint_mimic', 8: 'soft_hand_index_inner_joint',
@@ -404,7 +409,7 @@ def check_contacts(world, sim, touch_memory, touch_msg):
                 # Checking if in touch id dict and saving to touches now
                 for k in touch_id_dict:
                     if k in first_link or k in second_link:
-                        if np.linalg.norm(cont_f):
+                        if np.linalg.norm(cont_f) > 0.0:
                             touches_now.append(touch_id_dict.get(k))
 
     # The first id in touches now which is not in touch memory will be published
@@ -428,7 +433,7 @@ def check_contacts(world, sim, touch_memory, touch_msg):
         touch_msg.data = id_for_pub
 
     # Publishing
-    # global_vars.touch_pub.publish(touch_msg)
+    global_vars.touch_pub.publish(touch_msg)
 
     if DEBUG or True:
         print 'The big_palm_force is', big_palm_force, 'and the number of touches are', len(touch_memory)
