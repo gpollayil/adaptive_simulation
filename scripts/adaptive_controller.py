@@ -3,7 +3,7 @@ This auxiliary file contains the adaptive controller used in main.py.
 """
 
 import plugins.actuators.CompliantHandEmulator  # TODO: Does this work? Specify this to be imported from other package
-import plugins.reflex  # TODO: Does this work? Specify this to be imported from other package
+# import plugins.reflex  # TODO: Does this work? Specify this to be imported from other package
 import plugins.soft_hand  # TODO: Does this work? Specify this to be imported from other package
 from klampt.math import se3, so3, vectorops
 import math as sym

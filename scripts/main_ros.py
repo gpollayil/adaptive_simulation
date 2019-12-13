@@ -163,7 +163,7 @@ def launch_grasping(passed_robot_name, object_set, object_name):
     mv_el.set_moving_base_xform(robot, xform[0], xform[1])
 
     # Launch the simulation
-    program = GLSimulationPlugin(world)
+    program = GLSimulationProgram(world)
     sim = program.sim
 
     # Setting up simulation parameters
@@ -371,12 +371,19 @@ def publish_object(world_, msg):
     obj_pose.orientation.z = msg.transform.rotation.z
     global_vars.obj_pose_pub.publish(obj_pose)
     obj_twist = Twist()
-    obj_twist.angular.x = w_obj[0]
-    obj_twist.angular.y = w_obj[1]
-    obj_twist.angular.z = w_obj[2]
-    obj_twist.linear.x = v_obj[0]
-    obj_twist.linear.y = v_obj[1]
-    obj_twist.linear.z = v_obj[2]
+    # obj_twist.angular.x = w_obj[0]
+    # obj_twist.angular.y = w_obj[1]
+    # obj_twist.angular.z = w_obj[2]
+    # obj_twist.linear.x = v_obj[0]
+    # obj_twist.linear.y = v_obj[1]
+    # obj_twist.linear.z = v_obj[2]
+    # Issue with Klampt 0.7 as getVelocity is not correctly impemented
+    obj_twist.angular.x = 0.0
+    obj_twist.angular.y = 0.0
+    obj_twist.angular.z = 0.0
+    obj_twist.linear.x = 0.0
+    obj_twist.linear.y = 0.0
+    obj_twist.linear.z = 0.0
     global_vars.obj_twist_pub.publish(obj_twist)
 
 
