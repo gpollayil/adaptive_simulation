@@ -80,7 +80,7 @@ object_frame_name = 'object'
 adaptive_grasping_service_name = '/adaptive_grasper_service'
 
 # For contact publishing
-palm_force_thresh = 20
+palm_force_thresh = 200
 palm_link_name = 'soft_hand_palm_link'
 max_num_contacts = 5
 touch_pub_topic_name = '/touching_finger_topic'
@@ -371,12 +371,19 @@ def publish_object(world_, msg):
     obj_pose.orientation.z = msg.transform.rotation.z
     global_vars.obj_pose_pub.publish(obj_pose)
     obj_twist = Twist()
-    obj_twist.angular.x = w_obj[0]
-    obj_twist.angular.y = w_obj[1]
-    obj_twist.angular.z = w_obj[2]
-    obj_twist.linear.x = v_obj[0]
-    obj_twist.linear.y = v_obj[1]
-    obj_twist.linear.z = v_obj[2]
+    # Publishing null twist now
+    # obj_twist.angular.x = w_obj[0]
+    # obj_twist.angular.y = w_obj[1]
+    # obj_twist.angular.z = w_obj[2]
+    # obj_twist.linear.x = v_obj[0]
+    # obj_twist.linear.y = v_obj[1]
+    # obj_twist.linear.z = v_obj[2]
+    obj_twist.angular.x = 0.0
+    obj_twist.angular.y = 0.0
+    obj_twist.angular.z = 0.0
+    obj_twist.linear.x = 0.0
+    obj_twist.linear.y = 0.0
+    obj_twist.linear.z = 0.0
     global_vars.obj_twist_pub.publish(obj_twist)
 
 
@@ -424,7 +431,7 @@ def check_contacts(world, sim, touch_memory, touch_msg):
             touch_memory.append(id_for_pub)
             break
 
-    if DEBUG or True:
+    if DEBUG:
         print 'touch_memory is ', touch_memory
 
     if touch_memory:
@@ -433,9 +440,9 @@ def check_contacts(world, sim, touch_memory, touch_msg):
         touch_msg.data = id_for_pub
 
     # Publishing
-    global_vars.touch_pub.publish(touch_msg)
+    # global_vars.touch_pub.publish(touch_msg)
 
-    if DEBUG or True:
+    if DEBUG:
         print 'The big_palm_force is', big_palm_force, 'and the number of touches are', len(touch_memory)
 
     # Returning
