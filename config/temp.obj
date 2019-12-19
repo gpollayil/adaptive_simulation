@@ -1,5 +1,5 @@
 #A boilerplate template for an object
-mesh ../../IROS2016ManipulationChallenge/data/objects/apc2015/oreo_mega_stuf/textured_meshes/optimized_tsdf_textured_mesh.ply
+mesh ../../IROS2016ManipulationChallenge/data/objects/apc2015/dove_beauty_bar/textured_meshes/optimized_tsdf_textured_mesh.ply
 mass 0.100000
 autoMass
 kStiffness 100000

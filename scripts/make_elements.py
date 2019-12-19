@@ -68,6 +68,7 @@ def make_object(object_set, object_name, world):
         assert n_objs < world.numRigidObjects(), "Hmm... the object didn't load, but loadElement didn't return -1?"
 
         obj = world.rigidObject(world.numRigidObjects() - 1)
+        obj.geometry().scale(0.8, 1.1 , 1)
         obj.setTransform(*se3.identity())
         b_min, b_max = obj.geometry().getBB()
 
