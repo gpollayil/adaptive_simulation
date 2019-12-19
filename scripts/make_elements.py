@@ -23,7 +23,7 @@ simple_geom_file_pattern = path_prefix + 'data/objects/%s'
 object_masses = {
     'apc2015': dict(),
 }
-default_object_mass = 0.6
+default_object_mass = 0.1
 object_template_fn = path_prefix + 'data/objects/object_template.obj'
 
 
@@ -108,12 +108,12 @@ def make_simple_object(object_name, world):
 
     obj = world.rigidObject(world.numRigidObjects() - 1)
 
-    # obj.geometry().scale(0.1, 0.05, 0.15)
+    obj.geometry().scale(0.1, 0.025, 0.1)
     obj.setTransform(*se3.identity())
     b_min, b_max = obj.geometry().getBB()
 
     T = obj.getTransform()
-    spacing = -0.01
+    spacing = 0.002
     T = (T[0], vectorops.add(T[1], (-(b_min[0] + b_max[0]) * 0.5, -(b_min[1] + b_max[1]) * 0.5, -b_min[2] + spacing)))
 
     obj.setTransform(*T)
