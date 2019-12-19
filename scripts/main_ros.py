@@ -80,7 +80,7 @@ object_frame_name = 'object'
 adaptive_grasping_service_name = '/adaptive_grasper_service'
 
 # For contact publishing
-palm_force_thresh = 20
+palm_force_thresh = 30
 palm_link_name = 'soft_hand_palm_link'
 max_num_contacts = 5
 touch_pub_topic_name = '/touching_finger_topic'
@@ -263,9 +263,10 @@ def update_simulation(world, sim, d_time):
 
         # Getting the new touch id and publishing it while checking for algorithm stopping conditions
         force_palm, num_contacts = check_contacts(world, sim, touch_memory, touch_msg)
+        syn_now = sim.controller(0).getSensedConfig()[34]
 
         # Stopping adaptive grasping if stopping conditions (too much force on palm or too many contacts)
-        if force_palm or num_contacts >= max_num_contacts:
+        if force_palm or num_contacts >= max_num_contacts or syn_now > global_vars.syn_closed:
             if global_vars.is_adaptive_running:
                 if not call_adaptive_grasping(False):
                     return

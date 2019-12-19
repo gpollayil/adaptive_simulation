@@ -29,7 +29,6 @@ got_syn = False
 # For lifting
 t_lift = 0.0                    # will be set later
 lift_trajectory_duration = 6.0
-syn_closed = 0.37               # the value of synergy after which lifting is performed
 xform = None                    # will be set later
 
 
@@ -210,7 +209,7 @@ def make(sim, hand, dt):
             print 'syn_now is ', syn_now
 
             # In this way even if hand reopens after getting lift traj, the lifting won't be compromised
-            if syn_now < syn_closed and not global_vars.got_pres_pose:
+            if syn_now < global_vars.syn_closed and not global_vars.got_pres_pose:
                 # Closing hand completely
                 hand.setCommand([1.0])
                 t_lift = sim.getTime()

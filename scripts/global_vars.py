@@ -18,6 +18,9 @@ global obj_twist_pub
 # Service client for adaptive grasping and the bool stating if adaptive grasping is running or not
 global adaptive_service_client
 global is_adaptive_running
+global syn_closed
+syn_closed = 0.39               # the value of synergy after which lifting is performed
+
 
 # For broadcasting the palm frame and object frame
 global palm_broadcaster
