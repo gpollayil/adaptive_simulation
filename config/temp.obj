@@ -1,6 +1,6 @@
 #A boilerplate template for an object
-mesh ../../IROS2016ManipulationChallenge/data/objects/apc2015/stanley_66_052/textured_meshes/optimized_tsdf_textured_mesh.ply
-mass 0.300000
+mesh ../../IROS2016ManipulationChallenge/data/objects/apple.ply
+mass 0.600000
 autoMass
 kStiffness 100000
 kDamping 30000

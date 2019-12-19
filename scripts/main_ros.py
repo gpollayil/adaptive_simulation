@@ -80,7 +80,7 @@ object_frame_name = 'object'
 adaptive_grasping_service_name = '/adaptive_grasper_service'
 
 # For contact publishing
-palm_force_thresh = 200
+palm_force_thresh = 20
 palm_link_name = 'soft_hand_palm_link'
 max_num_contacts = 5
 touch_pub_topic_name = '/touching_finger_topic'
@@ -140,7 +140,10 @@ def launch_grasping(passed_robot_name, object_set, object_name):
 
     # Making the robot and the object (from make_elements.py)
     robot = mk_el.make_robot(passed_robot_name, world)
-    mk_el.make_object(object_set, object_name, world)
+    if not 'none' in object_set:
+        mk_el.make_object(object_set, object_name, world)
+    else:
+        mk_el.make_simple_object(object_name, world)
 
     # NOT CLEAR WHAT THIS DOES... AS OF NOW THIS WORKS... HOWEVER -> TODO: Check this out!!!
     do_edit = True

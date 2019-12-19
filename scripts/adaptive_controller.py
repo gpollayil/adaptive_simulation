@@ -29,7 +29,7 @@ got_syn = False
 # For lifting
 t_lift = 0.0                    # will be set later
 lift_trajectory_duration = 6.0
-syn_closed = 0.40               # the value of synergy after which lifting is performed
+syn_closed = 0.37               # the value of synergy after which lifting is performed
 xform = None                    # will be set later
 
 
