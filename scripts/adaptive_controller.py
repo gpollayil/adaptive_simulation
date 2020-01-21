@@ -8,6 +8,7 @@ import plugins.soft_hand  # TODO: Does this work? Specify this to be imported fr
 from klampt.math import se3, so3, vectorops
 import math as sym
 import numpy as np
+import time
 
 import global_vars
 import move_elements as mv_el
@@ -212,6 +213,11 @@ def make(sim, hand, dt):
             if syn_now < global_vars.syn_closed and not global_vars.got_pres_pose:
                 # Closing hand completely
                 hand.setCommand([1.0])
+
+                # Wait for remaining time
+                rem_time = controller.remainingTime()
+                time.sleep(rem_time)
+
                 t_lift = sim.getTime()
                 print 'Closing hand completely!!!'
             else:

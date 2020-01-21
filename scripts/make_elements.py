@@ -23,7 +23,7 @@ simple_geom_file_pattern = path_prefix + 'data/objects/%s'
 object_masses = {
     'apc2015': dict(),
 }
-default_object_mass = 0.1
+default_object_mass = 0.05
 object_template_fn = path_prefix + 'data/objects/object_template.obj'
 
 
@@ -52,7 +52,8 @@ def make_object(object_set, object_name, world):
 
     for pattern in object_geom_file_patterns[object_set]:
         obj_file = pattern % (object_name,)
-        obj_mass = object_masses[object_set].get('mass', default_object_mass)
+        obj_mass = default_object_mass
+        # obj_mass = object_masses[object_set].get('mass', default_object_mass)
 
         f = open(object_template_fn, 'r')
         pattern = ''.join(f.readlines())
