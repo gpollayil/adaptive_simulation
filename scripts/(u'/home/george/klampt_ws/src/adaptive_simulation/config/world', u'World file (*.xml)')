@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<world>
+  <display background="0.400000 0.400000 1.000000 0.000000" />
+  <robot name="temp" file="world', u'World file (*/temp.rob" />
+  <rigidObject name="dove_beauty_bar" file="world', u'World file (*/dove_beauty_bar.obj" >
+    <display color="0.200000 0.500000 0.700000 1.000000"/>
+  </rigidObject>
+  <terrain name="plane" file="world', u'World file (*/plane.env" >
+    <display color="0.800000 0.600000 0.200000 1.000000"/>
+  </terrain>
+</world>
