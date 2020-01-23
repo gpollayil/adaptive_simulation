@@ -2,12 +2,15 @@
 
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Float64
+from std_msgs.msg import Bool
 
 # For the subscriber to the robot commands
 global hand_command
 hand_command = Float64()
 global arm_command
 arm_command = Twist()
+global stop_adaptive_command
+stop_adaptive_command = Bool(False)
 
 # For publishing the joint states, the touch data and the object pose and twist
 global joints_pub

@@ -19,6 +19,7 @@ from std_msgs.msg import Int8
 import geometry_msgs.msg
 from geometry_msgs.msg import Pose, Twist
 from std_msgs.msg import Float64
+from std_msgs.msg import Bool
 
 # Checking for good Klampt version
 import pkg_resources
@@ -64,6 +65,7 @@ terrain_file = path_prefix + "data/terrains/plane.env"                  # terrai
 # ROS PARAMS
 
 # For joint state and floating frame publishing
+stop_adaptive_topic = '/stop_adaptive_in_simulation'
 hand_topic = '/right_hand/velocity_controller/command'
 arm_topic = '/panda_arm/cartesian_velocity_controller/command'
 joints_pub_topic_name = '/soft_hand_klampt/joint_states'
@@ -266,7 +268,8 @@ def update_simulation(world, sim, d_time):
         syn_now = sim.controller(0).getSensedConfig()[34]
 
         # Stopping adaptive grasping if stopping conditions (too much force on palm or too many contacts)
-        if force_palm or num_contacts >= max_num_contacts or syn_now > global_vars.syn_closed:
+        print 'The stop adaptive bool is ', global_vars.stop_adaptive_command
+        if force_palm or num_contacts >= max_num_contacts or syn_now > global_vars.syn_closed or global_vars.stop_adaptive_command.data:
             if global_vars.is_adaptive_running:
                 if not call_adaptive_grasping(False):
                     return
@@ -469,6 +472,11 @@ def hand_callback(data):
         rospy.loginfo(rospy.get_caller_id() + " I heard %s", data.data)
     global_vars.hand_command = data.data
 
+def stop_adaptive_callback(data):
+    if DEBUG:
+        rospy.loginfo(rospy.get_caller_id() + " I heard %s", data)
+    global_vars.stop_adaptive_command = data
+
 
 """ 
 Main 
@@ -492,6 +500,7 @@ def main():
     # Subscribers to command topics and their variables
     rospy.Subscriber(arm_topic, Twist, arm_callback)
     rospy.Subscriber(hand_topic, Float64, hand_callback)
+    rospy.Subscriber(stop_adaptive_topic, Bool, stop_adaptive_callback)
 
     # TF broadcaster for floating frame and for object frame
     global_vars.palm_broadcaster = tf2_ros.StaticTransformBroadcaster()
